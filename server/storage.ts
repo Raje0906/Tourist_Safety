@@ -38,15 +38,7 @@ export class MemStorage implements IStorage {
   private encryptionKey: string;
 
   constructor() {
-    // Initialize blockchain service
-    this.blockchainService = new BlockchainTouristService();
-    this.encryptionKey = process.env.ENCRYPTION_KEY || 'default-encryption-key-change-in-production';
-    
-    // Initialize blockchain service with admin wallet if available
-    if (process.env.ADMIN_PRIVATE_KEY) {
-      this.blockchainService.initializeWithWallet(process.env.ADMIN_PRIVATE_KEY);
-    }
-    // Initialize with admin users
+    // Initialize with admin users first
     this.createUser({
       email: 'admin1@safetysystem.com',
       name: 'Admin One',
@@ -57,6 +49,35 @@ export class MemStorage implements IStorage {
       name: 'Admin Two',
       role: 'admin',
     });
+    
+    // Initialize blockchain service if configured
+    this.encryptionKey = process.env.ENCRYPTION_KEY || 'default-encryption-key-change-in-production';
+    
+    try {
+      // Only initialize blockchain service if we have all required environment variables
+      if (process.env.ETHEREUM_RPC_URL && process.env.TOURIST_ID_CONTRACT_ADDRESS) {
+        console.log('🔗 Initializing blockchain service...');
+        this.blockchainService = new BlockchainTouristService(
+          process.env.ETHEREUM_RPC_URL,
+          process.env.TOURIST_ID_CONTRACT_ADDRESS,
+          process.env.IPFS_URL
+        );
+        
+        // Initialize blockchain service with admin wallet if available
+        if (process.env.ADMIN_PRIVATE_KEY) {
+          this.blockchainService.initializeWithWallet(process.env.ADMIN_PRIVATE_KEY);
+        }
+        console.log('✅ Blockchain service initialized successfully');
+      } else {
+        console.warn('⚠️ Blockchain environment variables not configured, using fallback mode');
+        console.warn('   Please set ETHEREUM_RPC_URL and TOURIST_ID_CONTRACT_ADDRESS in .env');
+        this.blockchainService = null as any; // Will use fallback implementations
+      }
+    } catch (error) {
+      console.error('❌ Failed to initialize blockchain service:', error);
+      console.warn('🔄 Falling back to mock blockchain implementation');
+      this.blockchainService = null as any; // Will use fallback implementations
+    }
   }
 
   // User methods

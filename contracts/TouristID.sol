@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 /**
@@ -102,7 +102,7 @@ contract TouristID is Ownable, ReentrancyGuard {
         _;
     }
 
-    constructor() {
+    constructor() Ownable(msg.sender) {
         // Add contract deployer as initial authority
         verificationAuthorities[msg.sender] = VerificationAuthority({
             authority: msg.sender,
@@ -142,7 +142,7 @@ contract TouristID is Ownable, ReentrancyGuard {
                 _documentHash,
                 msg.sender,
                 block.timestamp,
-                block.difficulty
+                block.prevrandao
             )
         );
 
@@ -240,7 +240,8 @@ contract TouristID is Ownable, ReentrancyGuard {
             bool isActive
         )
     {
-        TouristProfile memory profile = touristProfiles[_profileId];
+        TouristProfile storage profile = touristProfiles[_profileId];
+        bool profileIsActive = profile.isActive && !revokedProfiles[_profileId];
         return (
             profile.profileHash,
             profile.documentHash,
@@ -248,7 +249,7 @@ contract TouristID is Ownable, ReentrancyGuard {
             profile.touristAddress,
             profile.createdAt,
             profile.verificationLevel,
-            profile.isActive && !revokedProfiles[_profileId]
+            profileIsActive
         );
     }
 

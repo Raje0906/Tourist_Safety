@@ -1,4 +1,5 @@
-import { ethers } from "hardhat";
+const hre = require("hardhat");
+const { ethers } = require("hardhat");
 
 async function main() {
   console.log("🚀 Deploying TouristID Smart Contract...");
@@ -56,11 +57,8 @@ async function main() {
     transactionHash: deployTx?.hash
   };
 
-  const fs = await import('fs');
-  const path = await import('path');
-  const { fileURLToPath } = await import('url');
-  const __filename = fileURLToPath(import.meta.url);
-  const __dirname = path.dirname(__filename);
+  const fs = require('fs');
+  const path = require('path');
   
   const deploymentDir = path.join(__dirname, '../deployment');
   if (!fs.existsSync(deploymentDir)) {
