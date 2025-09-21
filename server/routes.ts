@@ -92,7 +92,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json({ tourist });
     } catch (error) {
-      res.status(400).json({ error: 'Invalid tourist data' });
+      console.error('Tourist creation error:', error);
+      if (error instanceof Error) {
+        res.status(400).json({ 
+          error: 'Invalid tourist data', 
+          details: error.message 
+        });
+      } else {
+        res.status(400).json({ error: 'Invalid tourist data' });
+      }
     }
   });
 

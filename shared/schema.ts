@@ -72,6 +72,17 @@ export const insertTouristSchema = createInsertSchema(tourists).omit({
   digitalIdHash: true,
   safetyScore: true,
   isActive: true,
+}).extend({
+  startDate: z.union([z.string(), z.date(), z.null()]).optional().transform((val) => {
+    if (!val || val === null) return null;
+    if (typeof val === 'string') return new Date(val);
+    return val;
+  }),
+  endDate: z.union([z.string(), z.date(), z.null()]).optional().transform((val) => {
+    if (!val || val === null) return null;
+    if (typeof val === 'string') return new Date(val);
+    return val;
+  }),
 });
 
 export const insertAlertSchema = createInsertSchema(alerts).omit({
