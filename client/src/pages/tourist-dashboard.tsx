@@ -59,8 +59,32 @@ export default function TouristDashboard() {
         },
         (error) => {
           console.error("Error getting location:", error);
+          // Set mock location for testing/demo purposes
+          const mockLocation = {
+            lat: 40.7128,
+            lng: -74.0060
+          };
+          setCurrentLocation(mockLocation);
+          
+          updateLocationMutation.mutate({
+            locationLat: mockLocation.lat.toString(),
+            locationLng: mockLocation.lng.toString(),
+            currentLocation: "New York, NY (Demo)",
+          });
+        },
+        {
+          timeout: 10000, // 10 second timeout
+          enableHighAccuracy: false,
+          maximumAge: 300000 // 5 minutes cache
         }
       );
+    } else {
+      // Fallback location if geolocation not supported
+      const fallbackLocation = {
+        lat: 40.7128,
+        lng: -74.0060
+      };
+      setCurrentLocation(fallbackLocation);
     }
   }, []);
 
