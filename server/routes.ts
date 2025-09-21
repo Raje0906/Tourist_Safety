@@ -278,5 +278,131 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Blockchain-specific endpoints
+  
+  // Verify tourist identity with blockchain signature
+  app.post("/api/blockchain/verify-identity", async (req, res) => {
+    try {
+      const { touristId, message, signature } = req.body;
+      
+      if (!touristId || !message || !signature) {
+        return res.status(400).json({ error: 'Missing required parameters' });
+      }
+      
+      const isValid = await storage.verifyTouristIdentity(touristId, message, signature);
+      
+      res.json({ 
+        isValid, 
+        message: isValid ? 'Identity verified successfully' : 'Identity verification failed'
+      });
+    } catch (error) {
+      res.status(500).json({ error: 'Identity verification failed' });
+    }
+  });
+  
+  // Admin endpoint to verify tourist profile on blockchain
+  app.post("/api/blockchain/verify-profile", async (req, res) => {
+    try {
+      const { touristId, verificationLevel } = req.body;
+      
+      if (!touristId || !verificationLevel) {
+        return res.status(400).json({ error: 'Missing required parameters' });
+      }
+      
+      if (verificationLevel < 1 || verificationLevel > 2) {
+        return res.status(400).json({ error: 'Invalid verification level' });
+      }
+      
+      const txHash = await storage.verifyTouristProfile(touristId, verificationLevel);
+      
+      if (!txHash) {
+        return res.status(404).json({ error: 'Tourist not found or verification failed' });
+      }
+      
+      broadcast({
+        type: 'PROFILE_VERIFIED',
+        data: { touristId, verificationLevel, transactionHash: txHash }
+      });
+      
+      res.json({ 
+        success: true,
+        transactionHash: txHash,
+        message: 'Profile verified on blockchain'
+      });
+    } catch (error) {
+      res.status(500).json({ error: 'Profile verification failed' });
+    }
+  });
+  
+  // Get blockchain profile data
+  app.get("/api/blockchain/profile/:touristId", async (req, res) => {
+    try {
+      const profile = await storage.getBlockchainProfile(req.params.touristId);
+      
+      if (!profile) {
+        return res.status(404).json({ error: 'Blockchain profile not found' });
+      }
+      
+      res.json({ profile });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch blockchain profile' });
+    }
+  });
+  
+  // Emergency access to encrypted profile data
+  app.post("/api/blockchain/emergency-access", async (req, res) => {
+    try {
+      const { touristId } = req.body;
+      
+      if (!touristId) {
+        return res.status(400).json({ error: 'Tourist ID required' });
+      }
+      
+      const emergencyData = await storage.emergencyAccessProfile(touristId);
+      
+      if (!emergencyData) {
+        return res.status(404).json({ error: 'Emergency data not found' });
+      }
+      
+      // Log emergency access for audit trail
+      broadcast({
+        type: 'EMERGENCY_ACCESS',
+        data: { touristId, timestamp: new Date().toISOString() }
+      });
+      
+      res.json({ 
+        emergencyData: JSON.parse(emergencyData),
+        accessTime: new Date().toISOString()
+      });
+    } catch (error) {
+      res.status(500).json({ error: 'Emergency access failed' });
+    }
+  });
+  
+  // Check if profile is verified on blockchain
+  app.get("/api/blockchain/verification-status/:touristId", async (req, res) => {
+    try {
+      const isVerified = await storage.isProfileVerified(req.params.touristId);
+      res.json({ isVerified });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to check verification status' });
+    }
+  });
+  
+  // Get blockchain network information
+  app.get("/api/blockchain/network-info", async (req, res) => {
+    try {
+      const networkInfo = await storage.getBlockchainNetworkInfo();
+      
+      if (!networkInfo) {
+        return res.status(503).json({ error: 'Blockchain network unavailable' });
+      }
+      
+      res.json(networkInfo);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to get network information' });
+    }
+  });
+
   return httpServer;
 }

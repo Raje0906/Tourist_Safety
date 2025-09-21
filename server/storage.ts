@@ -1,5 +1,6 @@
 import { type User, type InsertUser, type Tourist, type InsertTourist, type Alert, type InsertAlert, type EmergencyIncident, type InsertEmergencyIncident } from "@shared/schema";
 import { randomUUID } from "crypto";
+import { BlockchainTouristService, type BlockchainTouristProfile } from './blockchain';
 
 export interface IStorage {
   // User methods
@@ -33,8 +34,18 @@ export class MemStorage implements IStorage {
   private tourists: Map<string, Tourist> = new Map();
   private alerts: Map<string, Alert> = new Map();
   private emergencyIncidents: Map<string, EmergencyIncident> = new Map();
+  private blockchainService: BlockchainTouristService;
+  private encryptionKey: string;
 
   constructor() {
+    // Initialize blockchain service
+    this.blockchainService = new BlockchainTouristService();
+    this.encryptionKey = process.env.ENCRYPTION_KEY || 'default-encryption-key-change-in-production';
+    
+    // Initialize blockchain service with admin wallet if available
+    if (process.env.ADMIN_PRIVATE_KEY) {
+      this.blockchainService.initializeWithWallet(process.env.ADMIN_PRIVATE_KEY);
+    }
     // Initialize with admin users
     this.createUser({
       email: 'admin1@safetysystem.com',
@@ -84,26 +95,125 @@ export class MemStorage implements IStorage {
 
   async createTourist(insertTourist: InsertTourist): Promise<Tourist> {
     const id = randomUUID();
-    const digitalIdHash = `blockchain_${randomUUID().replace(/-/g, '')}`;
-    const tourist: Tourist = {
-      ...insertTourist,
-      id,
-      digitalIdHash,
-      documentUrl: insertTourist.documentUrl || null,
-      itinerary: insertTourist.itinerary || null,
-      startDate: insertTourist.startDate || null,
-      endDate: insertTourist.endDate || null,
-      emergencyName: insertTourist.emergencyName || null,
-      emergencyPhone: insertTourist.emergencyPhone || null,
-      currentLocation: insertTourist.currentLocation || null,
-      locationLat: insertTourist.locationLat || null,
-      locationLng: insertTourist.locationLng || null,
-      safetyScore: 85,
-      isActive: true,
-      createdAt: new Date(),
-    };
-    this.tourists.set(id, tourist);
-    return tourist;
+    
+    try {
+      // Generate wallet for tourist
+      const wallet = BlockchainTouristService.generateWallet();
+      
+      // Prepare profile data for blockchain
+      const profileData = {
+        firstName: insertTourist.firstName,
+        lastName: insertTourist.lastName,
+        phone: insertTourist.phone,
+        documentType: insertTourist.documentType,
+        email: `tourist_${id}@blockchain.local` // Mock email for demo
+      };
+      
+      // Create mock document buffer (in production, this would be the actual document)
+      const documentBuffer = Buffer.from(JSON.stringify({
+        documentType: insertTourist.documentType,
+        documentUrl: insertTourist.documentUrl,
+        uploadTime: new Date().toISOString()
+      }));
+      
+      // Prepare emergency contact
+      const emergencyContactData = JSON.stringify({
+        name: insertTourist.emergencyName,
+        phone: insertTourist.emergencyPhone
+      });
+      
+      // Create blockchain-secured digital ID
+      let blockchainProfile: BlockchainTouristProfile;
+      try {
+        // Initialize blockchain service with tourist's wallet
+        await this.blockchainService.initializeWithWallet(wallet.privateKey);
+        
+        // Create digital ID on blockchain
+        blockchainProfile = await this.blockchainService.createDigitalTouristID(
+          profileData,
+          documentBuffer,
+          emergencyContactData,
+          this.encryptionKey
+        );
+      } catch (blockchainError) {
+        console.warn('Blockchain creation failed, using fallback:', blockchainError);
+        // Fallback to mock implementation for development
+        blockchainProfile = {
+          profileId: `blockchain_${randomUUID().replace(/-/g, '')}`,
+          profileHash: `0x${randomUUID().replace(/-/g, '')}`,
+          documentHash: `0x${randomUUID().replace(/-/g, '')}`,
+          ipfsDocumentHash: `Qm${randomUUID().replace(/-/g, '')}`,
+          touristAddress: wallet.address,
+          createdAt: Math.floor(Date.now() / 1000),
+          verificationLevel: 0,
+          isActive: true,
+          transactionHash: `0x${randomUUID().replace(/-/g, '')}`
+        };
+      }
+      
+      // Create tourist record with blockchain data
+      const tourist: Tourist = {
+        ...insertTourist,
+        id,
+        digitalIdHash: blockchainProfile.profileId,
+        documentUrl: insertTourist.documentUrl || null,
+        itinerary: insertTourist.itinerary || null,
+        startDate: insertTourist.startDate || null,
+        endDate: insertTourist.endDate || null,
+        emergencyName: insertTourist.emergencyName || null,
+        emergencyPhone: insertTourist.emergencyPhone || null,
+        currentLocation: insertTourist.currentLocation || null,
+        locationLat: insertTourist.locationLat || null,
+        locationLng: insertTourist.locationLng || null,
+        safetyScore: 85,
+        isActive: true,
+        createdAt: new Date(),
+      };
+      
+      // Store additional blockchain metadata (in production, use proper database)
+      (tourist as any).blockchainData = {
+        walletAddress: wallet.address,
+        profileHash: blockchainProfile.profileHash,
+        documentHash: blockchainProfile.documentHash,
+        ipfsHash: blockchainProfile.ipfsDocumentHash,
+        transactionHash: blockchainProfile.transactionHash,
+        verificationLevel: blockchainProfile.verificationLevel
+      };
+      
+      this.tourists.set(id, tourist);
+      
+      console.log(`✅ Tourist created with blockchain ID: ${blockchainProfile.profileId}`);
+      console.log(`   Wallet Address: ${wallet.address}`);
+      console.log(`   Transaction: ${blockchainProfile.transactionHash}`);
+      
+      return tourist;
+      
+    } catch (error) {
+      console.error('Error creating blockchain tourist:', error);
+      
+      // Fallback to original implementation
+      const digitalIdHash = `fallback_${randomUUID().replace(/-/g, '')}`;
+      const tourist: Tourist = {
+        ...insertTourist,
+        id,
+        digitalIdHash,
+        documentUrl: insertTourist.documentUrl || null,
+        itinerary: insertTourist.itinerary || null,
+        startDate: insertTourist.startDate || null,
+        endDate: insertTourist.endDate || null,
+        emergencyName: insertTourist.emergencyName || null,
+        emergencyPhone: insertTourist.emergencyPhone || null,
+        currentLocation: insertTourist.currentLocation || null,
+        locationLat: insertTourist.locationLat || null,
+        locationLng: insertTourist.locationLng || null,
+        safetyScore: 85,
+        isActive: true,
+        createdAt: new Date(),
+      };
+      
+      this.tourists.set(id, tourist);
+      return tourist;
+    }
   }
 
   async updateTourist(id: string, updates: Partial<Tourist>): Promise<Tourist | undefined> {
@@ -196,6 +306,120 @@ export class MemStorage implements IStorage {
     };
     this.emergencyIncidents.set(id, updated);
     return updated;
+  }
+
+  // Blockchain-specific methods
+  
+  /**
+   * Verify tourist identity using blockchain signature
+   */
+  async verifyTouristIdentity(
+    touristId: string, 
+    message: string, 
+    signature: string
+  ): Promise<boolean> {
+    try {
+      const tourist = this.tourists.get(touristId);
+      if (!tourist?.digitalIdHash) return false;
+      
+      return await this.blockchainService.verifyDigitalSignature(
+        tourist.digitalIdHash,
+        message,
+        signature
+      );
+    } catch (error) {
+      console.error('Identity verification failed:', error);
+      return false;
+    }
+  }
+  
+  /**
+   * Verify tourist profile on blockchain (admin only)
+   */
+  async verifyTouristProfile(
+    touristId: string, 
+    verificationLevel: number
+  ): Promise<string | null> {
+    try {
+      const tourist = this.tourists.get(touristId);
+      if (!tourist?.digitalIdHash) return null;
+      
+      const txHash = await this.blockchainService.verifyProfile(
+        tourist.digitalIdHash,
+        verificationLevel
+      );
+      
+      // Update local record
+      tourist.safetyScore = Math.min(100, tourist.safetyScore + (verificationLevel * 10));
+      this.tourists.set(touristId, tourist);
+      
+      return txHash;
+    } catch (error) {
+      console.error('Profile verification failed:', error);
+      return null;
+    }
+  }
+  
+  /**
+   * Get blockchain profile data
+   */
+  async getBlockchainProfile(touristId: string): Promise<any> {
+    try {
+      const tourist = this.tourists.get(touristId);
+      if (!tourist?.digitalIdHash) return null;
+      
+      return await this.blockchainService.getProfile(tourist.digitalIdHash);
+    } catch (error) {
+      console.error('Failed to get blockchain profile:', error);
+      return null;
+    }
+  }
+  
+  /**
+   * Emergency access to encrypted data
+   */
+  async emergencyAccessProfile(
+    touristId: string
+  ): Promise<string | null> {
+    try {
+      const tourist = this.tourists.get(touristId);
+      if (!tourist?.digitalIdHash) return null;
+      
+      return await this.blockchainService.emergencyAccess(
+        tourist.digitalIdHash,
+        this.encryptionKey
+      );
+    } catch (error) {
+      console.error('Emergency access failed:', error);
+      return null;
+    }
+  }
+  
+  /**
+   * Check if tourist profile is verified on blockchain
+   */
+  async isProfileVerified(touristId: string): Promise<boolean> {
+    try {
+      const tourist = this.tourists.get(touristId);
+      if (!tourist?.digitalIdHash) return false;
+      
+      return await this.blockchainService.isProfileVerified(tourist.digitalIdHash);
+    } catch (error) {
+      console.error('Verification check failed:', error);
+      return false;
+    }
+  }
+  
+  /**
+   * Get network information
+   */
+  async getBlockchainNetworkInfo(): Promise<{ name: string; chainId: number } | null> {
+    try {
+      return await this.blockchainService.getNetworkInfo();
+    } catch (error) {
+      console.error('Failed to get network info:', error);
+      return null;
+    }
   }
 }
 
