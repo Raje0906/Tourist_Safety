@@ -1,0 +1,38 @@
+ELECTRONIC FIRST INFORMATION REPORT (E-FIR)
+===========================================
+
+FIR Number: EFIR1758561710415RY49L
+Date Filed: 22/9/2025
+Status: filed
+
+INCIDENT DETAILS
+================
+Type: assault
+Location: Pune
+Coordinates: 18.5204, 73.8567
+
+DESCRIPTION
+===========
+wdadawd a
+
+COMPLAINANT DETAILS
+==================
+Tourist ID: 68d1303b7f80926a22c919fe
+Filed By: 68d1303b7f80926a22c919fe
+
+AUTHORITY CONTACTED
+==================
+Authority ID: 68d1846ff0879ba31765d753
+
+EVIDENCE FILES
+==============
+https://storage.example.com/evidence/1758561440132_LoginSignup (1).png
+
+SYSTEM INFORMATION
+==================
+Generated automatically by Tourist Safety System
+Timestamp: 2025-09-22T17:21:50.630Z
+
+---
+This is an electronically generated document.
+For queries, contact: support@touristsafety.gov

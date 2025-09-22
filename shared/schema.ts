@@ -158,6 +158,15 @@ export const insertEFIRSchema = createInsertSchema(efirs).omit({
   createdAt: true,
   updatedAt: true,
   pdfPath: true,
+}).extend({
+  locationLat: z.union([z.string(), z.number(), z.null(), z.undefined()]).optional().transform((val) => {
+    if (!val || val === null || val === undefined || val === '') return null;
+    return val.toString();
+  }),
+  locationLng: z.union([z.string(), z.number(), z.null(), z.undefined()]).optional().transform((val) => {
+    if (!val || val === null || val === undefined || val === '') return null;
+    return val.toString();
+  }),
 });
 
 // Types

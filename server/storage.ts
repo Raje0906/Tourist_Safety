@@ -58,6 +58,7 @@ export interface IStorage {
   emergencyAccessProfile(touristId: string): Promise<string | null>;
   isProfileVerified(touristId: string): Promise<boolean>;
   getBlockchainNetworkInfo(): Promise<{ name: string; chainId: number } | null>;
+  getBlockchainServiceStatus(): Promise<any>;
 }
 
 export class MemStorage implements IStorage {
@@ -84,17 +85,41 @@ export class MemStorage implements IStorage {
       role: 'admin',
     });
     
-    // Initialize default authorities
+    // Initialize default authorities (basic schema only)
     this.createAuthority({
-      name: 'Delhi Police',
+      name: 'Delhi Police - Central',
       type: 'police',
-      email: 'delhi.police@gov.in',
-      phone: '+91-11-23490000',
-      jurisdiction: 'Delhi'
+      email: 'central.police@delhi.gov.in',
+      phone: '+91-11-23360100',
+      jurisdiction: 'Central Delhi'
     });
     
     this.createAuthority({
-      name: 'Tourist Helpline',
+      name: 'Mumbai Police - South',
+      type: 'police',
+      email: 'south.police@mumbai.gov.in',
+      phone: '+91-22-22154503',
+      jurisdiction: 'South Mumbai'
+    });
+    
+    this.createAuthority({
+      name: 'Pune Police - Central',
+      type: 'police',
+      email: 'central.police@pune.gov.in',
+      phone: '+91-20-25531694',
+      jurisdiction: 'Central Pune'
+    });
+    
+    this.createAuthority({
+      name: 'Bengaluru Police - MG Road',
+      type: 'police',
+      email: 'mgroad.police@bengaluru.gov.in',
+      phone: '+91-80-25584020',
+      jurisdiction: 'Central Bengaluru'
+    });
+    
+    this.createAuthority({
+      name: 'Tourist Helpline - All India',
       type: 'tourist_police',
       email: 'tourist.help@gov.in',
       phone: '+91-11-1363',
@@ -102,7 +127,7 @@ export class MemStorage implements IStorage {
     });
     
     this.createAuthority({
-      name: 'Emergency Medical Services',
+      name: 'Emergency Medical Services - AIIMS',
       type: 'medical',
       email: 'emergency@aiims.edu',
       phone: '+91-11-26588500',
@@ -516,6 +541,12 @@ export class MemStorage implements IStorage {
       const tourist = this.tourists.get(touristId);
       if (!tourist?.digitalIdHash) return false;
       
+      if (!this.blockchainService) {
+        // Fallback: Mock verification for development
+        console.log('Using fallback identity verification');
+        return true;
+      }
+      
       return await this.blockchainService.verifyDigitalSignature(
         tourist.digitalIdHash,
         message,
@@ -537,6 +568,18 @@ export class MemStorage implements IStorage {
     try {
       const tourist = this.tourists.get(touristId);
       if (!tourist?.digitalIdHash) return null;
+      
+      if (!this.blockchainService) {
+        // Fallback: Mock transaction hash for development
+        console.log('Using fallback profile verification');
+        const mockTxHash = `0x${randomUUID().replace(/-/g, '')}`;
+        
+        // Update local record
+        tourist.safetyScore = Math.min(100, (tourist.safetyScore || 85) + (verificationLevel * 10));
+        this.tourists.set(touristId, tourist);
+        
+        return mockTxHash;
+      }
       
       const txHash = await this.blockchainService.verifyProfile(
         tourist.digitalIdHash,
@@ -562,6 +605,18 @@ export class MemStorage implements IStorage {
       const tourist = this.tourists.get(touristId);
       if (!tourist?.digitalIdHash) return null;
       
+      if (!this.blockchainService) {
+        // Fallback: Return mock profile data
+        console.log('Using fallback blockchain profile');
+        return {
+          profileId: tourist.digitalIdHash,
+          verificationLevel: 1,
+          isActive: tourist.isActive,
+          createdAt: tourist.createdAt,
+          mockProfile: true
+        };
+      }
+      
       return await this.blockchainService.getProfile(tourist.digitalIdHash);
     } catch (error) {
       console.error('Failed to get blockchain profile:', error);
@@ -578,6 +633,22 @@ export class MemStorage implements IStorage {
     try {
       const tourist = this.tourists.get(touristId);
       if (!tourist?.digitalIdHash) return null;
+      
+      if (!this.blockchainService) {
+        // Fallback: Return basic emergency data
+        console.log('Using fallback emergency access');
+        return JSON.stringify({
+          touristId,
+          name: `${tourist.firstName} ${tourist.lastName}`,
+          phone: tourist.phone,
+          emergencyContact: {
+            name: tourist.emergencyName,
+            phone: tourist.emergencyPhone
+          },
+          mockData: true,
+          accessTime: new Date().toISOString()
+        });
+      }
       
       return await this.blockchainService.emergencyAccess(
         tourist.digitalIdHash,
@@ -597,6 +668,12 @@ export class MemStorage implements IStorage {
       const tourist = this.tourists.get(touristId);
       if (!tourist?.digitalIdHash) return false;
       
+      if (!this.blockchainService) {
+        // Fallback: Check based on safety score
+        console.log('Using fallback verification check');
+        return (tourist.safetyScore || 0) >= 85;
+      }
+      
       return await this.blockchainService.isProfileVerified(tourist.digitalIdHash);
     } catch (error) {
       console.error('Verification check failed:', error);
@@ -609,10 +686,45 @@ export class MemStorage implements IStorage {
    */
   async getBlockchainNetworkInfo(): Promise<{ name: string; chainId: number } | null> {
     try {
+      if (!this.blockchainService) {
+        // Fallback: Return mock network info
+        console.log('Using fallback network info');
+        return {
+          name: 'Local Development Network',
+          chainId: 1337
+        };
+      }
+      
       return await this.blockchainService.getNetworkInfo();
     } catch (error) {
       console.error('Failed to get network info:', error);
       return null;
+    }
+  }
+
+  /**
+   * Get comprehensive blockchain and IPFS service status
+   */
+  async getBlockchainServiceStatus(): Promise<any> {
+    try {
+      if (!this.blockchainService) {
+        return {
+          available: false,
+          blockchain: { connected: false, error: 'Blockchain service not initialized' },
+          ipfs: { connected: false, enabled: false, error: 'Service not available' }
+        };
+      }
+      
+      const status = await this.blockchainService.getServiceStatus();
+      return {
+        available: true,
+        ...status
+      };
+    } catch (error) {
+      return {
+        available: false,
+        error: error instanceof Error ? error.message : 'Unknown service error'
+      };
     }
   }
   

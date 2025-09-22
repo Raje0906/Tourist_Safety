@@ -4,8 +4,10 @@ import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useWebSocket } from "@/lib/websocket";
 import AnimatedBackground from "@/components/animated-background";
+import EFIRForm from "@/components/efir-form";
 import { 
   Shield, 
   Users, 
@@ -38,6 +40,8 @@ interface StatisticsData {
 export default function AdminDashboard() {
   const [, setLocation] = useLocation();
   const { lastMessage, isConnected } = useWebSocket();
+  const [showEFIRForm, setShowEFIRForm] = useState(false);
+  const [selectedTouristId, setSelectedTouristId] = useState<string | null>(null);
 
   // Get user data from localStorage
   const user = JSON.parse(localStorage.getItem("user") || "{}");
@@ -161,6 +165,33 @@ export default function AdminDashboard() {
     
     // Redirect to login page
     setLocation("/");
+  };
+
+  const handleGenerateFIR = () => {
+    // If no tourists are available, show an alert
+    if (tourists.length === 0) {
+      alert('No tourists available to generate E-FIR for');
+      return;
+    }
+    
+    // Use the first tourist as default, in a real app this would be selected by admin
+    const firstTourist = tourists[0];
+    setSelectedTouristId(firstTourist.id);
+    setShowEFIRForm(true);
+  };
+
+  const handleEFIRSuccess = (efir: any) => {
+    console.log('E-FIR created successfully:', efir);
+    setShowEFIRForm(false);
+    setSelectedTouristId(null);
+    // Refresh E-FIRs data
+    refetchEFIRs();
+    refetchStatistics();
+  };
+
+  const handleEFIRCancel = () => {
+    setShowEFIRForm(false);
+    setSelectedTouristId(null);
   };
 
   return (
@@ -421,7 +452,10 @@ export default function AdminDashboard() {
                   <Download className="mr-2 w-4 h-4" />
                   Export
                 </Button>
-                <Button data-testid="button-generate-fir">
+                <Button 
+                  onClick={handleGenerateFIR}
+                  data-testid="button-generate-fir"
+                >
                   <FileText className="mr-2 w-4 h-4" />
                   Generate FIR
                 </Button>
@@ -543,6 +577,22 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* E-FIR Form Dialog */}
+      <Dialog open={showEFIRForm} onOpenChange={setShowEFIRForm}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Generate Electronic FIR (E-FIR)</DialogTitle>
+          </DialogHeader>
+          {selectedTouristId && (
+            <EFIRForm
+              touristId={selectedTouristId}
+              onSuccess={handleEFIRSuccess}
+              onCancel={handleEFIRCancel}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

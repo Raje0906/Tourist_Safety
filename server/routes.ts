@@ -5,6 +5,10 @@ import { storage } from "./storage";
 import { insertUserSchema, insertTouristSchema, insertAlertSchema, insertEmergencyIncidentSchema, insertAIAnomalySchema, insertEFIRSchema, insertAuthoritySchema } from "@shared/schema";
 import { AIAnomalyDetector } from "./ai-anomaly-detector";
 import { EFIRGenerator } from "./efir-generator";
+import { notificationService } from "./notification-service";
+import { geofencingService } from "./geofencing-service";
+import { analyticsService } from "./analytics-service";
+import { fileManagementService } from "./file-management-service";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
@@ -406,6 +410,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Blockchain service status endpoint
+  app.get("/api/blockchain/status", async (req, res) => {
+    try {
+      const status = await storage.getBlockchainServiceStatus();
+      res.json({ status });
+    } catch (error) {
+      console.error('Error getting blockchain status:', error);
+      res.status(500).json({ 
+        error: 'Failed to fetch blockchain status',
+        status: {
+          available: false,
+          error: 'Service unavailable'
+        }
+      });
+    }
+  });
+
   // AI Anomaly Detection routes
   app.get("/api/anomalies", async (req, res) => {
     try {
@@ -570,7 +591,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Authority routes
   app.get("/api/authorities", async (req, res) => {
     try {
-      const authorities = await storage.getAuthorities();
+      const { lat, lng, limit = 10 } = req.query;
+      let authorities = await storage.getAuthorities();
+      
+      // If location is provided, filter to nearest authorities
+      if (lat && lng) {
+        const userLat = parseFloat(lat as string);
+        const userLng = parseFloat(lng as string);
+        
+        // Calculate distance and sort by proximity
+        authorities = authorities
+          .map(authority => {
+            if (authority.latitude && authority.longitude) {
+              const distance = calculateDistance(
+                userLat, userLng,
+                parseFloat(authority.latitude), parseFloat(authority.longitude)
+              );
+              return { ...authority, distance };
+            }
+            return { ...authority, distance: Infinity };
+          })
+          .sort((a, b) => (a as any).distance - (b as any).distance)
+          .slice(0, parseInt(limit as string));
+      }
+      
       res.json({ authorities });
     } catch (error) {
       res.status(500).json({ error: 'Failed to fetch authorities' });
@@ -796,6 +840,897 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: 'Failed to get network information' });
     }
   });
+
+  // Helper function to calculate distance between two coordinates
+  function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    const R = 6371e3; // Earth's radius in meters
+    const φ1 = lat1 * Math.PI/180;
+    const φ2 = lat2 * Math.PI/180;
+    const Δφ = (lat2-lat1) * Math.PI/180;
+    const Δλ = (lon2-lon1) * Math.PI/180;
+    
+    const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+              Math.cos(φ1) * Math.cos(φ2) *
+              Math.sin(Δλ/2) * Math.sin(Δλ/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    
+    return R * c; // Distance in meters
+  }
+
+  // Advanced Features - Geofencing
+  app.post("/api/geofence/check", async (req, res) => {
+    try {
+      const { touristId, lat, lng } = req.body;
+      
+      if (!touristId || !lat || !lng) {
+        return res.status(400).json({ error: 'Missing required parameters' });
+      }
+      
+      // Check if tourist is in a safe zone
+      const safeZones = [
+        { name: 'Tourist Area 1', center: { lat: 28.6129, lng: 77.2295 }, radius: 5000 }, // Delhi
+        { name: 'Tourist Area 2', center: { lat: 19.0760, lng: 72.8777 }, radius: 5000 }, // Mumbai
+        { name: 'Tourist Area 3', center: { lat: 12.9716, lng: 77.5946 }, radius: 5000 }, // Bangalore
+      ];
+      
+      let isInSafeZone = false;
+      let currentZone = null;
+      
+      for (const zone of safeZones) {
+        const distance = calculateDistance(lat, lng, zone.center.lat, zone.center.lng);
+        if (distance <= zone.radius) {
+          isInSafeZone = true;
+          currentZone = zone.name;
+          break;
+        }
+      }
+      
+      // Create alert if outside safe zone
+      if (!isInSafeZone) {
+        const alert = await storage.createAlert({
+          touristId,
+          type: 'geofence',
+          severity: 'medium',
+          title: 'Outside Safe Zone',
+          message: 'Tourist has moved outside designated safe zones',
+          location: `${lat}, ${lng}`
+        });
+        
+        broadcast({
+          type: 'GEOFENCE_ALERT',
+          data: alert
+        });
+      }
+      
+      res.json({ 
+        isInSafeZone, 
+        currentZone,
+        latitude: lat,
+        longitude: lng,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      res.status(500).json({ error: 'Geofence check failed' });
+    }
+  });
+
+  // Real-time location tracking
+  app.post("/api/location/update", async (req, res) => {
+    try {
+      const { touristId, lat, lng, accuracy, timestamp } = req.body;
+      
+      if (!touristId || !lat || !lng) {
+        return res.status(400).json({ error: 'Missing required parameters' });
+      }
+      
+      // Update tourist location
+      const updatedTourist = await storage.updateTourist(touristId, {
+        locationLat: lat.toString(),
+        locationLng: lng.toString(),
+        currentLocation: `${lat}, ${lng}`
+      });
+      
+      if (!updatedTourist) {
+        return res.status(404).json({ error: 'Tourist not found' });
+      }
+      
+      // Broadcast location update
+      broadcast({
+        type: 'LOCATION_UPDATE',
+        data: {
+          touristId,
+          location: { lat, lng, accuracy, timestamp: timestamp || new Date().toISOString() },
+          tourist: updatedTourist
+        }
+      });
+      
+      res.json({ 
+        success: true, 
+        location: { lat, lng, accuracy, timestamp: timestamp || new Date().toISOString() }
+      });
+    } catch (error) {
+      res.status(500).json({ error: 'Location update failed' });
+    }
+  });
+
+  // Weather alerts integration
+  app.get("/api/weather/:location", async (req, res) => {
+    try {
+      const { location } = req.params;
+      
+      // Mock weather data (in production, integrate with weather API)
+      const weatherData = {
+        location,
+        temperature: Math.round(Math.random() * 30 + 10), // 10-40°C
+        condition: ['sunny', 'cloudy', 'rainy', 'stormy'][Math.floor(Math.random() * 4)],
+        humidity: Math.round(Math.random() * 100),
+        windSpeed: Math.round(Math.random() * 20),
+        alerts: [] as any[],
+        timestamp: new Date().toISOString()
+      };
+      
+      // Generate weather alerts
+      if (weatherData.condition === 'stormy') {
+        weatherData.alerts.push({
+          type: 'severe_weather',
+          severity: 'high',
+          message: 'Severe storm warning in effect. Seek shelter immediately.'
+        });
+      } else if (weatherData.condition === 'rainy') {
+        weatherData.alerts.push({
+          type: 'weather',
+          severity: 'medium',
+          message: 'Heavy rain expected. Carry umbrella and avoid flood-prone areas.'
+        });
+      }
+      
+      res.json({ weather: weatherData });
+    } catch (error) {
+      res.status(500).json({ error: 'Weather data fetch failed' });
+    }
+  });
+
+  // Safety recommendations
+  app.get("/api/safety/recommendations/:touristId", async (req, res) => {
+    try {
+      const { touristId } = req.params;
+      
+      const tourist = await storage.getTourist(touristId);
+      if (!tourist) {
+        return res.status(404).json({ error: 'Tourist not found' });
+      }
+      
+      // Generate safety recommendations based on location, time, and profile
+      const recommendations = [
+        {
+          id: 1,
+          type: 'general',
+          priority: 'high',
+          title: 'Keep Emergency Contacts Handy',
+          message: 'Always have local emergency numbers and your embassy contact information readily available.'
+        },
+        {
+          id: 2,
+          type: 'location',
+          priority: 'medium',
+          title: 'Stay in Well-lit Areas',
+          message: 'Avoid poorly lit streets and isolated areas, especially during night hours.'
+        },
+        {
+          id: 3,
+          type: 'communication',
+          priority: 'medium',
+          title: 'Regular Check-ins',
+          message: 'Share your location with trusted contacts and check in regularly.'
+        },
+        {
+          id: 4,
+          type: 'documents',
+          priority: 'high',
+          title: 'Secure Important Documents',
+          message: 'Keep copies of your passport and other important documents in a secure location.'
+        }
+      ];
+      
+      // Add location-specific recommendations
+      if (tourist.currentLocation) {
+        recommendations.push({
+          id: 5,
+          type: 'local',
+          priority: 'medium',
+          title: 'Local Safety Information',
+          message: 'Research local customs, laws, and potential safety concerns for your current area.'
+        });
+      }
+      
+      res.json({ recommendations });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to get safety recommendations' });
+    }
+  });
+
+  // Emergency contacts management
+  app.get("/api/emergency-contacts/:touristId", async (req, res) => {
+    try {
+      const { touristId } = req.params;
+      
+      const tourist = await storage.getTourist(touristId);
+      if (!tourist) {
+        return res.status(404).json({ error: 'Tourist not found' });
+      }
+      
+      // Get all relevant emergency contacts
+      const authorities = await storage.getAuthorities();
+      
+      const emergencyContacts = {
+        personal: {
+          name: tourist.emergencyName,
+          phone: tourist.emergencyPhone
+        },
+        local: authorities.filter(auth => auth.isActive),
+        international: [
+          {
+            name: 'Tourist Helpline India',
+            phone: '+91-11-1363',
+            type: 'tourist_support',
+            available24x7: true
+          },
+          {
+            name: 'Emergency Services',
+            phone: '112',
+            type: 'emergency',
+            available24x7: true
+          }
+        ]
+      };
+      
+      res.json({ contacts: emergencyContacts });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to get emergency contacts' });
+    }
+  });
+
+  // Advanced analytics for admin dashboard
+  app.get("/api/analytics/overview", async (req, res) => {
+    try {
+      const tourists = await storage.getAllActiveTourists();
+      const alerts = await storage.getAlerts();
+      const incidents = await storage.getEmergencyIncidents();
+      const anomalies = await storage.getAIAnomalies();
+      
+      // Calculate trends (mock data for demonstration)
+      const analytics = {
+        totalTourists: tourists.length,
+        activeTourists: tourists.filter(t => t.isActive).length,
+        totalAlerts: alerts.length,
+        resolvedAlerts: alerts.filter(a => a.isResolved).length,
+        totalIncidents: incidents.length,
+        resolvedIncidents: incidents.filter(i => i.status === 'resolved').length,
+        averageSafetyScore: tourists.length > 0 
+          ? Math.round((tourists.reduce((sum, t) => sum + (t.safetyScore || 0), 0) / tourists.length) * 10) / 10
+          : 0,
+        locationCoverage: {
+          delhi: tourists.filter(t => t.currentLocation?.includes('28.6')).length,
+          mumbai: tourists.filter(t => t.currentLocation?.includes('19.0')).length,
+          bangalore: tourists.filter(t => t.currentLocation?.includes('12.9')).length,
+          other: tourists.filter(t => t.currentLocation && 
+            !t.currentLocation.includes('28.6') && 
+            !t.currentLocation.includes('19.0') && 
+            !t.currentLocation.includes('12.9')).length
+        },
+        alertsByType: {
+          emergency: alerts.filter(a => a.type === 'emergency').length,
+          geofence: alerts.filter(a => a.type === 'geofence').length,
+          weather: alerts.filter(a => a.type === 'weather').length,
+          safety: alerts.filter(a => a.type === 'safety').length
+        },
+        incidentsByType: {
+          panic_button: incidents.filter(i => i.type === 'panic_button').length,
+          automatic: incidents.filter(i => i.type === 'automatic').length,
+          reported: incidents.filter(i => i.type === 'reported').length
+        },
+        anomalies: {
+          total: anomalies.length,
+          resolved: anomalies.filter(a => a.isResolved).length,
+          byType: {
+            movement: anomalies.filter(a => a.anomalyType === 'movement').length,
+            location: anomalies.filter(a => a.anomalyType === 'location').length,
+            communication: anomalies.filter(a => a.anomalyType === 'communication').length,
+            behavior: anomalies.filter(a => a.anomalyType === 'behavior').length
+          }
+        }
+      };
+      
+      res.json({ analytics });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to get analytics data' });
+    }
+  });
+
+  // Real-time dashboard data
+  app.get("/api/dashboard/realtime", async (req, res) => {
+    try {
+      const tourists = await storage.getAllActiveTourists();
+      const recentAlerts = (await storage.getAlerts())
+        .filter(alert => !alert.isResolved)
+        .slice(0, 10);
+      
+      const activeIncidents = (await storage.getEmergencyIncidents())
+        .filter(incident => incident.status === 'active');
+      
+      // Mock real-time data
+      const realtimeData = {
+        timestamp: new Date().toISOString(),
+        activeTourists: tourists.filter(t => {
+          // Consider active if location updated in last 30 minutes
+          return t.currentLocation && new Date(t.createdAt!).getTime() > Date.now() - 30 * 60 * 1000;
+        }).length,
+        onlineTourists: Math.floor(tourists.length * 0.7), // Mock online status
+        activeAlerts: recentAlerts.length,
+        criticalIncidents: activeIncidents.filter(i => 
+          recentAlerts.some(a => a.touristId === i.touristId && a.severity === 'critical')
+        ).length,
+        systemStatus: {
+          database: 'operational',
+          blockchain: 'operational',
+          notifications: 'operational',
+          geoServices: 'operational'
+        },
+        recentActivity: [
+          ...recentAlerts.slice(0, 5).map(alert => ({
+            type: 'alert',
+            timestamp: alert.createdAt,
+            message: `${alert.title} - ${alert.severity}`,
+            severity: alert.severity
+          })),
+          ...activeIncidents.slice(0, 5).map(incident => ({
+            type: 'incident',
+            timestamp: incident.createdAt,
+            message: `Emergency incident at ${incident.location}`,
+            severity: 'high'
+          }))
+        ].sort((a, b) => new Date(b.timestamp!).getTime() - new Date(a.timestamp!).getTime())
+      };
+      
+      res.json({ data: realtimeData });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to get real-time dashboard data' });
+    }
+  });
+
+  // Notification Service Endpoints
+  app.get("/api/notifications/preferences/:touristId", async (req, res) => {
+    try {
+      const preferences = notificationService.getPreferences(req.params.touristId);
+      res.json({ preferences });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to get notification preferences' });
+    }
+  });
+
+  app.put("/api/notifications/preferences/:touristId", async (req, res) => {
+    try {
+      const { touristId } = req.params;
+      notificationService.updatePreferences(touristId, req.body);
+      const updatedPreferences = notificationService.getPreferences(touristId);
+      res.json({ preferences: updatedPreferences });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to update notification preferences' });
+    }
+  });
+
+  app.post("/api/notifications/send", async (req, res) => {
+    try {
+      const result = await notificationService.sendNotification(req.body);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to send notification' });
+    }
+  });
+
+  app.post("/api/notifications/emergency/:touristId", async (req, res) => {
+    try {
+      const { touristId } = req.params;
+      const { message, location } = req.body;
+      
+      await notificationService.sendEmergencyNotification(touristId, message, location);
+      res.json({ success: true, message: 'Emergency notifications sent' });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to send emergency notifications' });
+    }
+  });
+
+  app.get("/api/notifications/statistics", async (req, res) => {
+    try {
+      const stats = notificationService.getStatistics();
+      res.json({ statistics: stats });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to get notification statistics' });
+    }
+  });
+
+  // Geofencing Service Endpoints
+  app.post("/api/geofencing/location-update", async (req, res) => {
+    try {
+      const { touristId, latitude, longitude, accuracy } = req.body;
+      
+      if (!touristId || !latitude || !longitude) {
+        return res.status(400).json({ error: 'Missing required parameters' });
+      }
+      
+      const result = await geofencingService.processLocationUpdate(
+        touristId,
+        { latitude, longitude },
+        accuracy
+      );
+      
+      // Broadcast geofence alerts
+      if (result.alerts.length > 0) {
+        result.alerts.forEach(alert => {
+          broadcast({
+            type: 'GEOFENCE_ALERT',
+            data: alert
+          });
+        });
+      }
+      
+      // Update tourist location in storage
+      await storage.updateTourist(touristId, {
+        locationLat: latitude.toString(),
+        locationLng: longitude.toString(),
+        currentLocation: `${latitude}, ${longitude}`
+      });
+      
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to process location update' });
+    }
+  });
+
+  app.get("/api/geofencing/safe-zones", async (req, res) => {
+    try {
+      const zones = geofencingService.getAllSafeZones();
+      res.json({ zones });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to get safe zones' });
+    }
+  });
+
+  app.post("/api/geofencing/safe-zones", async (req, res) => {
+    try {
+      const zoneId = geofencingService.addSafeZone(req.body);
+      res.json({ success: true, zoneId });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to create safe zone' });
+    }
+  });
+
+  app.put("/api/geofencing/safe-zones/:zoneId", async (req, res) => {
+    try {
+      const success = geofencingService.updateSafeZone(req.params.zoneId, req.body);
+      if (!success) {
+        return res.status(404).json({ error: 'Safe zone not found' });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to update safe zone' });
+    }
+  });
+
+  app.delete("/api/geofencing/safe-zones/:zoneId", async (req, res) => {
+    try {
+      const success = geofencingService.deleteSafeZone(req.params.zoneId);
+      if (!success) {
+        return res.status(404).json({ error: 'Safe zone not found' });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to delete safe zone' });
+    }
+  });
+
+  app.get("/api/geofencing/alerts/:touristId", async (req, res) => {
+    try {
+      const alerts = geofencingService.getGeofenceAlerts(req.params.touristId);
+      res.json({ alerts });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to get geofence alerts' });
+    }
+  });
+
+  app.patch("/api/geofencing/alerts/:touristId/:alertId/resolve", async (req, res) => {
+    try {
+      const success = geofencingService.resolveAlert(req.params.touristId, req.params.alertId);
+      if (!success) {
+        return res.status(404).json({ error: 'Alert not found' });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to resolve alert' });
+    }
+  });
+
+  app.get("/api/geofencing/nearby-zones", async (req, res) => {
+    try {
+      const { lat, lng, radius } = req.query;
+      
+      if (!lat || !lng) {
+        return res.status(400).json({ error: 'Latitude and longitude required' });
+      }
+      
+      const nearbyZones = geofencingService.getNearbyZones(
+        { latitude: Number(lat), longitude: Number(lng) },
+        radius ? Number(radius) : undefined
+      );
+      
+      res.json({ zones: nearbyZones });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to get nearby zones' });
+    }
+  });
+
+  app.get("/api/geofencing/emergency-facilities", async (req, res) => {
+    try {
+      const { lat, lng, radius } = req.query;
+      
+      if (!lat || !lng) {
+        return res.status(400).json({ error: 'Latitude and longitude required' });
+      }
+      
+      const facilities = geofencingService.getEmergencyFacilities(
+        { latitude: Number(lat), longitude: Number(lng) },
+        radius ? Number(radius) : undefined
+      );
+      
+      res.json({ facilities });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to get emergency facilities' });
+    }
+  });
+
+  app.get("/api/geofencing/safety-recommendations", async (req, res) => {
+    try {
+      const { lat, lng } = req.query;
+      
+      if (!lat || !lng) {
+        return res.status(400).json({ error: 'Latitude and longitude required' });
+      }
+      
+      const recommendations = geofencingService.getSafetyRecommendations(
+        { latitude: Number(lat), longitude: Number(lng) }
+      );
+      
+      res.json(recommendations);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to get safety recommendations' });
+    }
+  });
+
+  app.get("/api/geofencing/statistics", async (req, res) => {
+    try {
+      const stats = geofencingService.getStatistics();
+      res.json({ statistics: stats });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to get geofencing statistics' });
+    }
+  });
+
+  // Advanced Analytics Endpoints
+  app.get("/api/analytics/system-metrics", async (req, res) => {
+    try {
+      const metrics = await analyticsService.getSystemMetrics();
+      res.json({ metrics });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to get system metrics' });
+    }
+  });
+
+  app.get("/api/analytics/location", async (req, res) => {
+    try {
+      const analytics = await analyticsService.getLocationAnalytics();
+      res.json({ analytics });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to get location analytics' });
+    }
+  });
+
+  app.get("/api/analytics/time-based", async (req, res) => {
+    try {
+      const analytics = await analyticsService.getTimeBasedAnalytics();
+      res.json({ analytics });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to get time-based analytics' });
+    }
+  });
+
+  app.get("/api/analytics/behavior", async (req, res) => {
+    try {
+      const analytics = await analyticsService.getTouristBehaviorAnalytics();
+      res.json({ analytics });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to get behavior analytics' });
+    }
+  });
+
+  app.get("/api/analytics/performance", async (req, res) => {
+    try {
+      const analytics = await analyticsService.getSystemPerformanceAnalytics();
+      res.json({ analytics });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to get performance analytics' });
+    }
+  });
+
+  app.get("/api/analytics/predictive", async (req, res) => {
+    try {
+      const analytics = await analyticsService.getPredictiveAnalytics();
+      res.json({ analytics });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to get predictive analytics' });
+    }
+  });
+
+  app.get("/api/analytics/comprehensive-report", async (req, res) => {
+    try {
+      const report = await analyticsService.generateComprehensiveReport();
+      res.json({ report });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to generate comprehensive report' });
+    }
+  });
+
+  // File Management Endpoints
+  app.post("/api/files/upload", async (req, res) => {
+    try {
+      const result = await fileManagementService.uploadDocument(req.body);
+      
+      if (!result.success) {
+        return res.status(400).json(result);
+      }
+      
+      // Broadcast file upload notification
+      broadcast({
+        type: 'FILE_UPLOADED',
+        data: {
+          fileId: result.fileId,
+          touristId: req.body.touristId,
+          documentType: req.body.documentType,
+          timestamp: new Date().toISOString()
+        }
+      });
+      
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: 'File upload failed' });
+    }
+  });
+
+  app.get("/api/files/:fileId", async (req, res) => {
+    try {
+      const metadata = fileManagementService.getFileMetadata(req.params.fileId);
+      
+      if (!metadata) {
+        return res.status(404).json({ error: 'File not found' });
+      }
+      
+      res.json({ metadata });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to get file metadata' });
+    }
+  });
+
+  app.get("/api/files/tourist/:touristId", async (req, res) => {
+    try {
+      const files = fileManagementService.getFilesByTourist(req.params.touristId);
+      res.json({ files });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to get tourist files' });
+    }
+  });
+
+  app.get("/api/files/type/:documentType", async (req, res) => {
+    try {
+      const files = fileManagementService.getFilesByType(req.params.documentType as any);
+      res.json({ files });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to get files by type' });
+    }
+  });
+
+  app.post("/api/files/:fileId/verify", async (req, res) => {
+    try {
+      const { verifiedBy } = req.body;
+      
+      if (!verifiedBy) {
+        return res.status(400).json({ error: 'verifiedBy is required' });
+      }
+      
+      const result = await fileManagementService.verifyDocument(req.params.fileId, verifiedBy);
+      
+      if (!result.success) {
+        return res.status(400).json(result);
+      }
+      
+      // Broadcast verification notification
+      broadcast({
+        type: 'DOCUMENT_VERIFIED',
+        data: {
+          fileId: req.params.fileId,
+          verifiedBy,
+          timestamp: new Date().toISOString()
+        }
+      });
+      
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: 'Document verification failed' });
+    }
+  });
+
+  app.delete("/api/files/:fileId", async (req, res) => {
+    try {
+      const { deletedBy } = req.body;
+      
+      if (!deletedBy) {
+        return res.status(400).json({ error: 'deletedBy is required' });
+      }
+      
+      const result = await fileManagementService.deleteFile(req.params.fileId, deletedBy);
+      
+      if (!result.success) {
+        return res.status(400).json(result);
+      }
+      
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: 'File deletion failed' });
+    }
+  });
+
+  app.post("/api/files/search", async (req, res) => {
+    try {
+      const files = fileManagementService.searchFiles(req.body);
+      res.json({ files });
+    } catch (error) {
+      res.status(500).json({ error: 'File search failed' });
+    }
+  });
+
+  app.get("/api/files/analytics/overview", async (req, res) => {
+    try {
+      const analytics = fileManagementService.getFileAnalytics();
+      res.json({ analytics });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to get file analytics' });
+    }
+  });
+
+  app.get("/api/files/analytics/storage", async (req, res) => {
+    try {
+      const statistics = fileManagementService.getStorageStatistics();
+      res.json({ statistics });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to get storage statistics' });
+    }
+  });
+
+  app.post("/api/files/bulk-verify", async (req, res) => {
+    try {
+      const { fileIds, verifiedBy } = req.body;
+      
+      if (!fileIds || !Array.isArray(fileIds) || !verifiedBy) {
+        return res.status(400).json({ error: 'fileIds array and verifiedBy are required' });
+      }
+      
+      const result = await fileManagementService.bulkVerifyFiles(fileIds, verifiedBy);
+      
+      // Broadcast bulk verification notification
+      broadcast({
+        type: 'BULK_VERIFICATION_COMPLETE',
+        data: {
+          totalFiles: fileIds.length,
+          successful: result.success,
+          failed: result.failed,
+          verifiedBy,
+          timestamp: new Date().toISOString()
+        }
+      });
+      
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: 'Bulk verification failed' });
+    }
+  });
+
+  // Enhanced system monitoring endpoints
+  app.get("/api/system/health", async (req, res) => {
+    try {
+      const health = {
+        timestamp: new Date().toISOString(),
+        services: {
+          database: await this.checkDatabaseHealth(),
+          blockchain: await this.checkBlockchainHealth(),
+          notifications: this.checkNotificationHealth(),
+          geofencing: this.checkGeofencingHealth(),
+          fileManagement: this.checkFileManagementHealth()
+        },
+        overall: 'operational'
+      };
+      
+      // Determine overall health
+      const serviceStates = Object.values(health.services);
+      if (serviceStates.some(state => state === 'critical')) {
+        health.overall = 'critical';
+      } else if (serviceStates.some(state => state === 'degraded')) {
+        health.overall = 'degraded';
+      }
+      
+      res.json({ health });
+    } catch (error) {
+      res.status(500).json({ 
+        health: {
+          timestamp: new Date().toISOString(),
+          overall: 'critical',
+          error: 'Health check failed'
+        }
+      });
+    }
+  });
+
+  // Service-specific health check methods
+  const checkDatabaseHealth = async (): Promise<string> => {
+    try {
+      // Try to fetch a simple record
+      await storage.getAllActiveTourists();
+      return 'operational';
+    } catch (error) {
+      return 'critical';
+    }
+  };
+
+  const checkBlockchainHealth = async (): Promise<string> => {
+    try {
+      const status = await storage.getBlockchainServiceStatus();
+      if (status.available && status.blockchain.connected) {
+        return 'operational';
+      } else if (status.available) {
+        return 'degraded';
+      } else {
+        return 'critical';
+      }
+    } catch (error) {
+      return 'critical';
+    }
+  };
+
+  const checkNotificationHealth = (): string => {
+    try {
+      const stats = notificationService.getStatistics();
+      return stats.successRate > 90 ? 'operational' : 
+             stats.successRate > 70 ? 'degraded' : 'critical';
+    } catch (error) {
+      return 'critical';
+    }
+  };
+
+  const checkGeofencingHealth = (): string => {
+    try {
+      const stats = geofencingService.getStatistics();
+      return stats.activeSafeZones > 0 ? 'operational' : 'degraded';
+    } catch (error) {
+      return 'critical';
+    }
+  };
+
+  const checkFileManagementHealth = (): string => {
+    try {
+      const stats = fileManagementService.getStorageStatistics();
+      return stats.storageHealth === 'good' ? 'operational' :
+             stats.storageHealth === 'warning' ? 'degraded' : 'critical';
+    } catch (error) {
+      return 'critical';
+    }
+  };
 
   return httpServer;
 }

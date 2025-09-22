@@ -13,6 +13,8 @@ interface Authority {
   name: string;
   type: string;
   jurisdiction: string;
+  address?: string;
+  distance?: number;
 }
 
 interface EFIRFormProps {
@@ -41,14 +43,57 @@ export default function EFIRForm({ touristId, onSuccess, onCancel }: EFIRFormPro
     fetchAuthorities();
   }, []);
 
+  // Also fetch authorities when location coordinates change
+  useEffect(() => {
+    if (formData.locationLat && formData.locationLng) {
+      fetchAuthorities();
+    }
+  }, [formData.locationLat, formData.locationLng]);
+
   const fetchAuthorities = async () => {
     try {
+      // First try the simple API without location parameters
       const response = await fetch('/api/authorities');
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
       const data = await response.json();
-      setAuthorities(data.authorities || []);
-    } catch (error) {
-      console.error('Error fetching authorities:', error);
-      setError('Failed to load authorities');
+      console.log('Authorities response:', data);
+      
+      // Get all authorities and filter for police
+      const allAuthorities = data.authorities || [];
+      const policeStations = allAuthorities.filter((auth: Authority) => 
+        auth.type === 'police' || auth.type === 'tourist_police'
+      );
+      
+      console.log('Filtered police stations:', policeStations);
+      
+      if (policeStations.length === 0) {
+        // Fallback: create some default authorities if none exist
+        const defaultAuthorities = [
+          { id: 'default-1', name: 'Local Police Station', type: 'police', jurisdiction: 'Local Area' },
+          { id: 'default-2', name: 'Tourist Police Helpline', type: 'tourist_police', jurisdiction: 'All India' },
+          { id: 'default-3', name: 'Emergency Police Services', type: 'police', jurisdiction: 'Emergency Response' }
+        ];
+        setAuthorities(defaultAuthorities);
+        console.log('Using default authorities');
+      } else {
+        setAuthorities(policeStations);
+      }
+    } catch (err) {
+      console.error('Error fetching authorities:', err);
+      setError(`Failed to load authorities: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      
+      // Fallback: set default authorities even on error
+      const fallbackAuthorities = [
+        { id: 'fallback-1', name: 'Local Police Station', type: 'police', jurisdiction: 'Local Area' },
+        { id: 'fallback-2', name: 'Tourist Police Helpline (+91-11-1363)', type: 'tourist_police', jurisdiction: 'All India' },
+        { id: 'fallback-3', name: 'Emergency Police (Dial 100)', type: 'police', jurisdiction: 'Emergency' }
+      ];
+      setAuthorities(fallbackAuthorities);
+      console.log('Using fallback authorities due to error');
     }
   };
 
@@ -68,6 +113,8 @@ export default function EFIRForm({ touristId, onSuccess, onCancel }: EFIRFormPro
             locationLat: position.coords.latitude.toString(),
             locationLng: position.coords.longitude.toString()
           }));
+          // Refetch authorities when location is updated
+          setTimeout(() => fetchAuthorities(), 100);
         },
         (error) => {
           console.error('Error getting location:', error);
@@ -207,7 +254,40 @@ export default function EFIRForm({ touristId, onSuccess, onCancel }: EFIRFormPro
                 id="location"
                 placeholder="Enter incident location"
                 value={formData.location}
-                onChange={(e) => handleInputChange('location', e.target.value)}
+                onChange={(e) => {
+                  handleInputChange('location', e.target.value);
+                  // If user types a known city, set approximate coordinates
+                  const location = e.target.value.toLowerCase();
+                  if (location.includes('pune')) {
+                    setFormData(prev => ({
+                      ...prev,
+                      location: e.target.value,
+                      locationLat: '18.5204',
+                      locationLng: '73.8567'
+                    }));
+                  } else if (location.includes('delhi')) {
+                    setFormData(prev => ({
+                      ...prev,
+                      location: e.target.value,
+                      locationLat: '28.6139',
+                      locationLng: '77.2090'
+                    }));
+                  } else if (location.includes('mumbai')) {
+                    setFormData(prev => ({
+                      ...prev,
+                      location: e.target.value,
+                      locationLat: '19.0760',
+                      locationLng: '72.8777'
+                    }));
+                  } else if (location.includes('bangalore') || location.includes('bengaluru')) {
+                    setFormData(prev => ({
+                      ...prev,
+                      location: e.target.value,
+                      locationLat: '12.9716',
+                      locationLng: '77.5946'
+                    }));
+                  }
+                }}
                 className="flex-1"
               />
               <Button
@@ -263,16 +343,37 @@ export default function EFIRForm({ touristId, onSuccess, onCancel }: EFIRFormPro
             <Label htmlFor="authorityContacted">Contact Authority *</Label>
             <Select onValueChange={(value) => handleInputChange('authorityContacted', value)}>
               <SelectTrigger>
-                <SelectValue placeholder="Select authority to contact" />
+                <SelectValue placeholder="Select police station to contact" />
               </SelectTrigger>
               <SelectContent>
-                {authorities.map((authority) => (
-                  <SelectItem key={authority.id} value={authority.id}>
-                    {authority.name} ({authority.type}) - {authority.jurisdiction}
+                {authorities.length === 0 ? (
+                  <SelectItem value="loading" disabled>
+                    Loading authorities...
                   </SelectItem>
-                ))}
+                ) : (
+                  authorities.map((authority) => (
+                    <SelectItem key={authority.id} value={authority.id}>
+                      <div className="flex flex-col">
+                        <span className="font-medium">{authority.name}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {authority.jurisdiction} • {authority.type}
+                        </span>
+                      </div>
+                    </SelectItem>
+                  ))
+                )}
               </SelectContent>
             </Select>
+            {authorities.length > 0 && (
+              <p className="text-xs text-muted-foreground">
+                {authorities.length} police stations available for E-FIR filing
+              </p>
+            )}
+            {authorities.length === 0 && (
+              <p className="text-xs text-yellow-600">
+                Using fallback authorities. Please check your connection.
+              </p>
+            )}
           </div>
 
           {/* Evidence Upload */}
@@ -321,4 +422,3 @@ export default function EFIRForm({ touristId, onSuccess, onCancel }: EFIRFormPro
     </Card>
   );
 }
-"
