@@ -110,8 +110,94 @@ const emergencyIncidentSchema = new Schema<IEmergencyIncident>({
   resolvedAt: { type: Date }
 });
 
+// AI Anomaly Schema
+export interface IAIAnomaly extends Document {
+  touristId: string;
+  anomalyType: string;
+  severity: string;
+  confidence: number;
+  description: string;
+  locationLat?: number;
+  locationLng?: number;
+  behaviorData: any;
+  isResolved: boolean;
+  createdAt: Date;
+}
+
+const aiAnomalySchema = new Schema<IAIAnomaly>({
+  touristId: { type: String, required: true, ref: 'Tourist' },
+  anomalyType: { type: String, required: true }, // 'movement' | 'location' | 'communication' | 'behavior'
+  severity: { type: String, required: true }, // 'low' | 'medium' | 'high' | 'critical'
+  confidence: { type: Number, required: true, min: 0, max: 1 }, // 0-1 ML confidence score
+  description: { type: String, required: true },
+  locationLat: { type: Number },
+  locationLng: { type: Number },
+  behaviorData: { type: Schema.Types.Mixed }, // JSON data from ML model
+  isResolved: { type: Boolean, default: false },
+  createdAt: { type: Date, default: Date.now }
+});
+
+// E-FIR Schema
+export interface IEFIR extends Document {
+  firNumber: string;
+  touristId: string;
+  incidentType: string;
+  location: string;
+  locationLat?: number;
+  locationLng?: number;
+  description: string;
+  evidenceFiles: string[];
+  filedBy: string; // User ID who filed
+  authorityContacted: string;
+  status: string;
+  pdfPath?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const efirSchema = new Schema<IEFIR>({
+  firNumber: { type: String, required: true, unique: true },
+  touristId: { type: String, required: true, ref: 'Tourist' },
+  incidentType: { type: String, required: true }, // 'theft' | 'assault' | 'fraud' | 'harassment' | 'other'
+  location: { type: String, required: true },
+  locationLat: { type: Number },
+  locationLng: { type: Number },
+  description: { type: String, required: true },
+  evidenceFiles: [{ type: String }], // URLs to uploaded evidence
+  filedBy: { type: String, required: true, ref: 'User' },
+  authorityContacted: { type: String, required: true },
+  status: { type: String, required: true, default: 'filed' }, // 'filed' | 'investigating' | 'resolved' | 'closed'
+  pdfPath: { type: String }, // Path to generated PDF
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now }
+});
+
+// Authority Schema
+export interface IAuthority extends Document {
+  name: string;
+  type: string;
+  email: string;
+  phone: string;
+  jurisdiction: string;
+  isActive: boolean;
+  createdAt: Date;
+}
+
+const authoritySchema = new Schema<IAuthority>({
+  name: { type: String, required: true },
+  type: { type: String, required: true }, // 'police' | 'medical' | 'tourist_police' | 'embassy'
+  email: { type: String, required: true },
+  phone: { type: String, required: true },
+  jurisdiction: { type: String, required: true }, // Geographic area or city
+  isActive: { type: Boolean, default: true },
+  createdAt: { type: Date, default: Date.now }
+});
+
 // Create and export models
 export const UserModel = mongoose.model<IUser>('User', userSchema);
 export const TouristModel = mongoose.model<ITourist>('Tourist', touristSchema);
 export const AlertModel = mongoose.model<IAlert>('Alert', alertSchema);
 export const EmergencyIncidentModel = mongoose.model<IEmergencyIncident>('EmergencyIncident', emergencyIncidentSchema);
+export const AIAnomalyModel = mongoose.model<IAIAnomaly>('AIAnomaly', aiAnomalySchema);
+export const EFIRModel = mongoose.model<IEFIR>('EFIR', efirSchema);
+export const AuthorityModel = mongoose.model<IAuthority>('Authority', authoritySchema);

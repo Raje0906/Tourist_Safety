@@ -8,6 +8,7 @@ import TripValidation from "@/pages/trip-validation";
 import TouristRegistration from "@/pages/tourist-registration";
 import TouristDashboard from "@/pages/tourist-dashboard";
 import AdminDashboard from "@/pages/admin-dashboard";
+import AuthorityDashboard from "@/pages/authority-dashboard";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -18,6 +19,7 @@ function Router() {
       <Route path="/registration" component={TouristRegistration} />
       <Route path="/dashboard" component={TouristDashboard} />
       <Route path="/admin" component={AdminDashboard} />
+      <Route path="/authority-dashboard" component={AuthorityDashboard} />
       <Route component={NotFound} />
     </Switch>
   );

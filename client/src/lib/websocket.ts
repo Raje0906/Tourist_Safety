@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 
 export interface WebSocketMessage {
-  type: 'NEW_TOURIST' | 'NEW_ALERT' | 'EMERGENCY_INCIDENT' | 'LOCATION_UPDATE' | 'INCIDENT_UPDATE';
+  type: 'NEW_TOURIST' | 'NEW_ALERT' | 'EMERGENCY_INCIDENT' | 'LOCATION_UPDATE' | 'INCIDENT_UPDATE' | 
+        'AI_ANOMALY_DETECTED' | 'ANOMALY_UPDATE' | 'NEW_EFIR' | 'EFIR_UPDATE' | 'NEW_AUTHORITY' | 'AUTHORITY_UPDATE';
   data: any;
 }
 

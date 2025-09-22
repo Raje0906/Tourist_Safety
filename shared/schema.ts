@@ -60,6 +60,49 @@ export const emergencyIncidents = pgTable("emergency_incidents", {
   resolvedAt: timestamp("resolved_at"),
 });
 
+export const authorities = pgTable("authorities", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  type: text("type").notNull(), // 'police' | 'medical' | 'tourist_police' | 'embassy'
+  email: text("email").notNull(),
+  phone: text("phone").notNull(),
+  jurisdiction: text("jurisdiction").notNull(), // Geographic area or city
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const aiAnomalies = pgTable("ai_anomalies", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  touristId: varchar("tourist_id").references(() => tourists.id).notNull(),
+  anomalyType: text("anomaly_type").notNull(), // 'movement' | 'location' | 'communication' | 'behavior'
+  severity: text("severity").notNull(), // 'low' | 'medium' | 'high' | 'critical'
+  confidence: decimal("confidence").notNull(), // 0-1 ML confidence score
+  description: text("description").notNull(),
+  locationLat: decimal("location_lat"),
+  locationLng: decimal("location_lng"),
+  behaviorData: json("behavior_data"), // JSON data from ML model
+  isResolved: boolean("is_resolved").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const efirs = pgTable("efirs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  firNumber: text("fir_number").notNull().unique(),
+  touristId: varchar("tourist_id").references(() => tourists.id).notNull(),
+  incidentType: text("incident_type").notNull(), // 'theft' | 'assault' | 'fraud' | 'harassment' | 'other'
+  location: text("location").notNull(),
+  locationLat: decimal("location_lat"),
+  locationLng: decimal("location_lng"),
+  description: text("description").notNull(),
+  evidenceFiles: json("evidence_files").default([]), // URLs to uploaded evidence
+  filedBy: varchar("filed_by").references(() => users.id).notNull(),
+  authorityContacted: varchar("authority_contacted").references(() => authorities.id).notNull(),
+  status: text("status").notNull().default('filed'), // 'filed' | 'investigating' | 'resolved' | 'closed'
+  pdfPath: text("pdf_path"), // Path to generated PDF
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
@@ -97,6 +140,26 @@ export const insertEmergencyIncidentSchema = createInsertSchema(emergencyInciden
   resolvedAt: true,
 });
 
+export const insertAuthoritySchema = createInsertSchema(authorities).omit({
+  id: true,
+  createdAt: true,
+  isActive: true,
+});
+
+export const insertAIAnomalySchema = createInsertSchema(aiAnomalies).omit({
+  id: true,
+  createdAt: true,
+  isResolved: true,
+});
+
+export const insertEFIRSchema = createInsertSchema(efirs).omit({
+  id: true,
+  firNumber: true,
+  createdAt: true,
+  updatedAt: true,
+  pdfPath: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -109,3 +172,12 @@ export type InsertAlert = z.infer<typeof insertAlertSchema>;
 
 export type EmergencyIncident = typeof emergencyIncidents.$inferSelect;
 export type InsertEmergencyIncident = z.infer<typeof insertEmergencyIncidentSchema>;
+
+export type Authority = typeof authorities.$inferSelect;
+export type InsertAuthority = z.infer<typeof insertAuthoritySchema>;
+
+export type AIAnomaly = typeof aiAnomalies.$inferSelect;
+export type InsertAIAnomaly = z.infer<typeof insertAIAnomalySchema>;
+
+export type EFIR = typeof efirs.$inferSelect;
+export type InsertEFIR = z.infer<typeof insertEFIRSchema>;

@@ -2,7 +2,9 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
-import { insertUserSchema, insertTouristSchema, insertAlertSchema, insertEmergencyIncidentSchema } from "@shared/schema";
+import { insertUserSchema, insertTouristSchema, insertAlertSchema, insertEmergencyIncidentSchema, insertAIAnomalySchema, insertEFIRSchema, insertAuthoritySchema } from "@shared/schema";
+import { AIAnomalyDetector } from "./ai-anomaly-detector";
+import { EFIRGenerator } from "./efir-generator";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
@@ -380,9 +382,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const tourists = await storage.getAllActiveTourists();
       const alerts = await storage.getAlerts();
       const incidents = await storage.getEmergencyIncidents();
+      const anomalies = await storage.getAIAnomalies();
+      const efirs = await storage.getEFIRs();
       
       const activeAlerts = alerts.filter(alert => !alert.isResolved);
       const emergencyIncidents = incidents.filter(incident => incident.status === 'active');
+      const unresolvedAnomalies = anomalies.filter(anomaly => !anomaly.isResolved);
+      const pendingEFIRs = efirs.filter(efir => efir.status === 'filed');
       const averageSafetyScore = tourists.length > 0 
         ? tourists.reduce((sum, t) => sum + (t.safetyScore || 0), 0) / tourists.length 
         : 0;
@@ -391,14 +397,281 @@ export async function registerRoutes(app: Express): Promise<Server> {
         activeTourists: tourists.length,
         activeAlerts: activeAlerts.length,
         emergencyIncidents: emergencyIncidents.length,
-        averageSafetyScore: Math.round(averageSafetyScore * 10) / 10
+        averageSafetyScore: Math.round(averageSafetyScore * 10) / 10,
+        unresolvedAnomalies: unresolvedAnomalies.length,
+        pendingEFIRs: pendingEFIRs.length
       });
     } catch (error) {
       res.status(500).json({ error: 'Failed to fetch statistics' });
     }
   });
 
-  // Blockchain-specific endpoints
+  // AI Anomaly Detection routes
+  app.get("/api/anomalies", async (req, res) => {
+    try {
+      const anomalies = await storage.getAIAnomalies();
+      res.json({ anomalies });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch AI anomalies' });
+    }
+  });
+
+  app.get("/api/anomalies/tourist/:touristId", async (req, res) => {
+    try {
+      const anomalies = await storage.getAIAnomaliesByTouristId(req.params.touristId);
+      res.json({ anomalies });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch tourist anomalies' });
+    }
+  });
+
+  app.post("/api/anomalies/detect", async (req, res) => {
+    try {
+      const { touristId } = req.body;
+      
+      // Simulate behavior data collection
+      const behaviorData = await AIAnomalyDetector.simulateBehaviorAnalysis(touristId);
+      
+      // Detect anomalies
+      const anomalies = await AIAnomalyDetector.detectAnomalies(behaviorData);
+      
+      // Store detected anomalies
+      const createdAnomalies = [];
+      for (const anomaly of anomalies) {
+        if (anomaly.isAnomaly) {
+          const created = await storage.createAIAnomaly({
+            touristId,
+            anomalyType: anomaly.anomalyType,
+            severity: anomaly.severity,
+            confidence: anomaly.confidence.toString(),
+            description: anomaly.description,
+            locationLat: behaviorData.locationLat?.toString(),
+            locationLng: behaviorData.locationLng?.toString(),
+            behaviorData: anomaly.behaviorData
+          });
+          createdAnomalies.push(created);
+          
+          // Broadcast anomaly detection
+          broadcast({
+            type: 'AI_ANOMALY_DETECTED',
+            data: created
+          });
+          
+          // Create alert for high severity anomalies
+          if (anomaly.severity === 'high' || anomaly.severity === 'critical') {
+            const alert = await storage.createAlert({
+              touristId,
+              type: 'safety',
+              severity: anomaly.severity,
+              title: `AI Anomaly Detected: ${anomaly.anomalyType}`,
+              message: anomaly.description,
+              location: behaviorData.locationLat ? `${behaviorData.locationLat}, ${behaviorData.locationLng}` : undefined
+            });
+            
+            broadcast({
+              type: 'NEW_ALERT',
+              data: alert
+            });
+          }
+        }
+      }
+      
+      res.json({ 
+        behaviorData,
+        anomalies: createdAnomalies,
+        detectedCount: createdAnomalies.length
+      });
+    } catch (error) {
+      console.error('Error in anomaly detection:', error);
+      res.status(500).json({ error: 'Failed to detect anomalies' });
+    }
+  });
+
+  app.patch("/api/anomalies/:id", async (req, res) => {
+    try {
+      const anomaly = await storage.updateAIAnomaly(req.params.id, req.body);
+      if (!anomaly) {
+        return res.status(404).json({ error: 'Anomaly not found' });
+      }
+      
+      broadcast({
+        type: 'ANOMALY_UPDATE',
+        data: anomaly
+      });
+      
+      res.json({ anomaly });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to update anomaly' });
+    }
+  });
+
+  // E-FIR routes
+  app.get("/api/efirs", async (req, res) => {
+    try {
+      const efirs = await storage.getEFIRs();
+      res.json({ efirs });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch E-FIRs' });
+    }
+  });
+
+  app.get("/api/efirs/tourist/:touristId", async (req, res) => {
+    try {
+      const efirs = await storage.getEFIRsByTouristId(req.params.touristId);
+      res.json({ efirs });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch tourist E-FIRs' });
+    }
+  });
+
+  app.post("/api/efirs", async (req, res) => {
+    try {
+      const efirData = insertEFIRSchema.parse(req.body);
+      
+      // Validate incidentType
+      const validIncidentTypes = ['theft', 'assault', 'fraud', 'harassment', 'other'];
+      if (!validIncidentTypes.includes(efirData.incidentType)) {
+        return res.status(400).json({ error: 'Invalid incident type' });
+      }
+      
+      // Generate E-FIR
+      const efirResult = await EFIRGenerator.generateEFIR(efirData as any);
+      
+      broadcast({
+        type: 'NEW_EFIR',
+        data: efirResult
+      });
+      
+      res.json({ efir: efirResult });
+    } catch (error) {
+      console.error('Error creating E-FIR:', error);
+      res.status(400).json({ error: 'Invalid E-FIR data' });
+    }
+  });
+
+  app.patch("/api/efirs/:id", async (req, res) => {
+    try {
+      const efir = await storage.updateEFIR(req.params.id, req.body);
+      if (!efir) {
+        return res.status(404).json({ error: 'E-FIR not found' });
+      }
+      
+      broadcast({
+        type: 'EFIR_UPDATE',
+        data: efir
+      });
+      
+      res.json({ efir });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to update E-FIR' });
+    }
+  });
+
+  // Authority routes
+  app.get("/api/authorities", async (req, res) => {
+    try {
+      const authorities = await storage.getAuthorities();
+      res.json({ authorities });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch authorities' });
+    }
+  });
+
+  app.post("/api/authorities", async (req, res) => {
+    try {
+      const authorityData = insertAuthoritySchema.parse(req.body);
+      const authority = await storage.createAuthority(authorityData);
+      
+      broadcast({
+        type: 'NEW_AUTHORITY',
+        data: authority
+      });
+      
+      res.json({ authority });
+    } catch (error) {
+      res.status(400).json({ error: 'Invalid authority data' });
+    }
+  });
+
+  app.patch("/api/authorities/:id", async (req, res) => {
+    try {
+      const authority = await storage.updateAuthority(req.params.id, req.body);
+      if (!authority) {
+        return res.status(404).json({ error: 'Authority not found' });
+      }
+      
+      broadcast({
+        type: 'AUTHORITY_UPDATE',
+        data: authority
+      });
+      
+      res.json({ authority });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to update authority' });
+    }
+  });
+
+  // Test route for AI anomaly detection
+  app.post("/api/test/anomaly-detection", async (req, res) => {
+    try {
+      // Simulate anomaly detection for all active tourists
+      const tourists = await storage.getAllActiveTourists();
+      const detectedAnomalies = [];
+      
+      for (const tourist of tourists.slice(0, 3)) { // Test with first 3 tourists
+        const behaviorData = await AIAnomalyDetector.simulateBehaviorAnalysis(tourist.id);
+        const anomalies = await AIAnomalyDetector.detectAnomalies(behaviorData);
+        
+        for (const anomaly of anomalies) {
+          if (anomaly.isAnomaly) {
+            const created = await storage.createAIAnomaly({
+              touristId: tourist.id,
+              anomalyType: anomaly.anomalyType,
+              severity: anomaly.severity,
+              confidence: anomaly.confidence.toString(),
+              description: anomaly.description,
+              locationLat: behaviorData.locationLat?.toString(),
+              locationLng: behaviorData.locationLng?.toString(),
+              behaviorData: anomaly.behaviorData
+            });
+            
+            detectedAnomalies.push(created);
+            
+            broadcast({
+              type: 'AI_ANOMALY_DETECTED',
+              data: created
+            });
+            
+            // Create alert for high severity anomalies
+            if (anomaly.severity === 'high' || anomaly.severity === 'critical') {
+              const alert = await storage.createAlert({
+                touristId: tourist.id,
+                type: 'safety',
+                severity: anomaly.severity,
+                title: `AI Anomaly: ${anomaly.anomalyType}`,
+                message: anomaly.description,
+                location: behaviorData.locationLat ? `${behaviorData.locationLat}, ${behaviorData.locationLng}` : undefined
+              });
+              
+              broadcast({
+                type: 'NEW_ALERT',
+                data: alert
+              });
+            }
+          }
+        }
+      }
+      
+      res.json({ 
+        message: 'Test anomaly detection completed',
+        detectedAnomalies: detectedAnomalies.length,
+        anomalies: detectedAnomalies
+      });
+    } catch (error) {
+      console.error('Error in test anomaly detection:', error);
+      res.status(500).json({ error: 'Test failed' });
+    }
+  });
   
   // Verify tourist identity with blockchain signature
   app.post("/api/blockchain/verify-identity", async (req, res) => {

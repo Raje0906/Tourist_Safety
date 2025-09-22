@@ -22,7 +22,8 @@ import {
   TrendingUp,
   TrendingDown,
   Minus,
-  LogOut
+  LogOut,
+  Clock
 } from "lucide-react";
 
 interface StatisticsData {
@@ -30,6 +31,8 @@ interface StatisticsData {
   activeAlerts: number;
   emergencyIncidents: number;
   averageSafetyScore: number;
+  unresolvedAnomalies: number;
+  pendingEFIRs: number;
 }
 
 export default function AdminDashboard() {
@@ -66,6 +69,16 @@ export default function AdminDashboard() {
     queryKey: ['/api/emergencies'],
   });
 
+  // Fetch AI anomalies
+  const { data: anomaliesData, refetch: refetchAnomalies } = useQuery({
+    queryKey: ['/api/anomalies'],
+  });
+
+  // Fetch E-FIRs
+  const { data: efirsData, refetch: refetchEFIRs } = useQuery({
+    queryKey: ['/api/efirs'],
+  });
+
   // Handle WebSocket messages for real-time updates
   useEffect(() => {
     if (lastMessage) {
@@ -84,14 +97,26 @@ export default function AdminDashboard() {
           refetchIncidents();
           refetchStatistics();
           break;
+        case 'AI_ANOMALY_DETECTED':
+        case 'ANOMALY_UPDATE':
+          refetchAnomalies();
+          refetchStatistics();
+          break;
+        case 'NEW_EFIR':
+        case 'EFIR_UPDATE':
+          refetchEFIRs();
+          refetchStatistics();
+          break;
       }
     }
-  }, [lastMessage, refetchTourists, refetchAlerts, refetchIncidents, refetchStatistics]);
+  }, [lastMessage, refetchTourists, refetchAlerts, refetchIncidents, refetchStatistics, refetchAnomalies, refetchEFIRs]);
 
-  const statistics = statisticsData || { activeTourists: 0, activeAlerts: 0, emergencyIncidents: 0, averageSafetyScore: 0 };
+  const statistics = statisticsData || { activeTourists: 0, activeAlerts: 0, emergencyIncidents: 0, averageSafetyScore: 0, unresolvedAnomalies: 0, pendingEFIRs: 0 };
   const tourists = (touristsData as any)?.tourists || [];
   const alerts = (alertsData as any)?.alerts || [];
   const incidents = (incidentsData as any)?.incidents || [];
+  const anomalies = (anomaliesData as any)?.anomalies || [];
+  const efirs = (efirsData as any)?.efirs || [];
 
   const handleExportData = () => {
     const data = {
@@ -165,6 +190,15 @@ export default function AdminDashboard() {
             <Button 
               variant="ghost" 
               size="sm" 
+              onClick={() => setLocation("/authority-dashboard")}
+              className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+            >
+              <Shield className="w-5 h-5" />
+              Authority Dashboard
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="sm" 
               onClick={handleLogout}
               className="text-destructive hover:text-destructive hover:bg-destructive/10"
               data-testid="button-logout"
@@ -177,7 +211,7 @@ export default function AdminDashboard() {
 
       <div className="max-w-7xl mx-auto p-6 space-y-6 relative z-10">
         {/* Stats Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
           <Card className="bg-card/80 backdrop-blur-sm border border-border shadow-xl">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -254,6 +288,46 @@ export default function AdminDashboard() {
               <div className="mt-2 flex items-center text-green-400 text-sm">
                 <TrendingUp className="w-4 h-4 mr-1" />
                 <span>+2.1 points</span>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-card/80 backdrop-blur-sm border border-border shadow-xl">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-muted-foreground text-sm">AI Anomalies</p>
+                  <p className="text-2xl font-bold text-orange-500" data-testid="stat-anomalies">
+                    {statistics.unresolvedAnomalies}
+                  </p>
+                </div>
+                <div className="w-12 h-12 bg-orange-500/20 rounded-lg flex items-center justify-center">
+                  <TrendingUp className="text-orange-500 w-6 h-6" />
+                </div>
+              </div>
+              <div className="mt-2 flex items-center text-orange-500 text-sm">
+                <AlertTriangle className="w-4 h-4 mr-1" />
+                <span>Unresolved</span>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-card/80 backdrop-blur-sm border border-border shadow-xl">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-muted-foreground text-sm">Pending E-FIRs</p>
+                  <p className="text-2xl font-bold text-red-500" data-testid="stat-efirs">
+                    {statistics.pendingEFIRs}
+                  </p>
+                </div>
+                <div className="w-12 h-12 bg-red-500/20 rounded-lg flex items-center justify-center">
+                  <FileText className="text-red-500 w-6 h-6" />
+                </div>
+              </div>
+              <div className="mt-2 flex items-center text-red-500 text-sm">
+                <Clock className="w-4 h-4 mr-1" />
+                <span>Awaiting Action</span>
               </div>
             </CardContent>
           </Card>

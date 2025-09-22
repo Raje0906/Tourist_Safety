@@ -1,4 +1,4 @@
-import { type User, type InsertUser, type Tourist, type InsertTourist, type Alert, type InsertAlert, type EmergencyIncident, type InsertEmergencyIncident } from "@shared/schema";
+import { type User, type InsertUser, type Tourist, type InsertTourist, type Alert, type InsertAlert, type EmergencyIncident, type InsertEmergencyIncident, type AIAnomaly, type InsertAIAnomaly, type EFIR, type InsertEFIR, type Authority, type InsertAuthority } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { BlockchainTouristService, type BlockchainTouristProfile } from './blockchain';
 import { MongoStorage } from './mongo-storage';
@@ -29,6 +29,24 @@ export interface IStorage {
   createEmergencyIncident(incident: InsertEmergencyIncident): Promise<EmergencyIncident>;
   updateEmergencyIncident(id: string, updates: Partial<EmergencyIncident>): Promise<EmergencyIncident | undefined>;
   
+  // AI Anomaly methods
+  getAIAnomalies(): Promise<AIAnomaly[]>;
+  getAIAnomaliesByTouristId(touristId: string): Promise<AIAnomaly[]>;
+  createAIAnomaly(anomaly: InsertAIAnomaly): Promise<AIAnomaly>;
+  updateAIAnomaly(id: string, updates: Partial<AIAnomaly>): Promise<AIAnomaly | undefined>;
+  
+  // E-FIR methods
+  getEFIRs(): Promise<EFIR[]>;
+  getEFIRsByTouristId(touristId: string): Promise<EFIR[]>;
+  createEFIR(efir: InsertEFIR): Promise<EFIR>;
+  updateEFIR(id: string, updates: Partial<EFIR>): Promise<EFIR | undefined>;
+  
+  // Authority methods
+  getAuthorities(): Promise<Authority[]>;
+  getAuthorityById(id: string): Promise<Authority | undefined>;
+  createAuthority(authority: InsertAuthority): Promise<Authority>;
+  updateAuthority(id: string, updates: Partial<Authority>): Promise<Authority | undefined>;
+  
   // Digital ID validation methods
   checkValidDigitalId(userId: string, startDate: Date, endDate: Date): Promise<{ isValid: boolean; tourist?: Tourist; message: string }>;
   updateTouristTripDates(touristId: string, startDate: Date, endDate: Date, itinerary?: string): Promise<Tourist | undefined>;
@@ -47,6 +65,9 @@ export class MemStorage implements IStorage {
   private tourists: Map<string, Tourist> = new Map();
   private alerts: Map<string, Alert> = new Map();
   private emergencyIncidents: Map<string, EmergencyIncident> = new Map();
+  private aiAnomalies: Map<string, AIAnomaly> = new Map();
+  private efirs: Map<string, EFIR> = new Map();
+  private authorities: Map<string, Authority> = new Map();
   private blockchainService: BlockchainTouristService;
   private encryptionKey: string;
 
@@ -61,6 +82,31 @@ export class MemStorage implements IStorage {
       email: 'admin2@safetysystem.com',
       name: 'Admin Two',
       role: 'admin',
+    });
+    
+    // Initialize default authorities
+    this.createAuthority({
+      name: 'Delhi Police',
+      type: 'police',
+      email: 'delhi.police@gov.in',
+      phone: '+91-11-23490000',
+      jurisdiction: 'Delhi'
+    });
+    
+    this.createAuthority({
+      name: 'Tourist Helpline',
+      type: 'tourist_police',
+      email: 'tourist.help@gov.in',
+      phone: '+91-11-1363',
+      jurisdiction: 'All India'
+    });
+    
+    this.createAuthority({
+      name: 'Emergency Medical Services',
+      type: 'medical',
+      email: 'emergency@aiims.edu',
+      phone: '+91-11-26588500',
+      jurisdiction: 'Delhi NCR'
     });
     
     // Initialize blockchain service if configured
@@ -339,6 +385,120 @@ export class MemStorage implements IStorage {
       resolvedAt: updates.status === 'resolved' ? new Date() : incident.resolvedAt
     };
     this.emergencyIncidents.set(id, updated);
+    return updated;
+  }
+
+  // AI Anomaly methods
+  async getAIAnomalies(): Promise<AIAnomaly[]> {
+    return Array.from(this.aiAnomalies.values()).sort((a, b) => 
+      new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime()
+    );
+  }
+
+  async getAIAnomaliesByTouristId(touristId: string): Promise<AIAnomaly[]> {
+    return Array.from(this.aiAnomalies.values())
+      .filter(anomaly => anomaly.touristId === touristId)
+      .sort((a, b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime());
+  }
+
+  async createAIAnomaly(insertAnomaly: InsertAIAnomaly): Promise<AIAnomaly> {
+    const id = randomUUID();
+    const anomaly: AIAnomaly = {
+      ...insertAnomaly,
+      id,
+      locationLat: insertAnomaly.locationLat || null,
+      locationLng: insertAnomaly.locationLng || null,
+      behaviorData: insertAnomaly.behaviorData || null,
+      isResolved: false,
+      createdAt: new Date(),
+    };
+    this.aiAnomalies.set(id, anomaly);
+    return anomaly;
+  }
+
+  async updateAIAnomaly(id: string, updates: Partial<AIAnomaly>): Promise<AIAnomaly | undefined> {
+    const anomaly = this.aiAnomalies.get(id);
+    if (!anomaly) return undefined;
+    
+    const updated = { ...anomaly, ...updates };
+    this.aiAnomalies.set(id, updated);
+    return updated;
+  }
+
+  // E-FIR methods
+  async getEFIRs(): Promise<EFIR[]> {
+    return Array.from(this.efirs.values()).sort((a, b) => 
+      new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime()
+    );
+  }
+
+  async getEFIRsByTouristId(touristId: string): Promise<EFIR[]> {
+    return Array.from(this.efirs.values())
+      .filter(efir => efir.touristId === touristId)
+      .sort((a, b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime());
+  }
+
+  async createEFIR(insertEFIR: InsertEFIR): Promise<EFIR> {
+    const id = randomUUID();
+    const firNumber = `EFIR${Date.now()}${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
+    const efir: EFIR = {
+      ...insertEFIR,
+      id,
+      firNumber,
+      locationLat: insertEFIR.locationLat || null,
+      locationLng: insertEFIR.locationLng || null,
+      evidenceFiles: insertEFIR.evidenceFiles || null,
+      pdfPath: null,
+      status: 'filed',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    this.efirs.set(id, efir);
+    return efir;
+  }
+
+  async updateEFIR(id: string, updates: Partial<EFIR>): Promise<EFIR | undefined> {
+    const efir = this.efirs.get(id);
+    if (!efir) return undefined;
+    
+    const updated = { 
+      ...efir, 
+      ...updates,
+      updatedAt: new Date()
+    };
+    this.efirs.set(id, updated);
+    return updated;
+  }
+
+  // Authority methods
+  async getAuthorities(): Promise<Authority[]> {
+    return Array.from(this.authorities.values())
+      .filter(authority => authority.isActive)
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  async getAuthorityById(id: string): Promise<Authority | undefined> {
+    return this.authorities.get(id);
+  }
+
+  async createAuthority(insertAuthority: InsertAuthority): Promise<Authority> {
+    const id = randomUUID();
+    const authority: Authority = {
+      ...insertAuthority,
+      id,
+      isActive: true,
+      createdAt: new Date(),
+    };
+    this.authorities.set(id, authority);
+    return authority;
+  }
+
+  async updateAuthority(id: string, updates: Partial<Authority>): Promise<Authority | undefined> {
+    const authority = this.authorities.get(id);
+    if (!authority) return undefined;
+    
+    const updated = { ...authority, ...updates };
+    this.authorities.set(id, updated);
     return updated;
   }
 
