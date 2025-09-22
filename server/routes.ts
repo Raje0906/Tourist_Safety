@@ -78,6 +78,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/auth/tourist/signin", async (req, res) => {
+    try {
+      const { email, password } = req.body;
+      console.log('Tourist signin attempt:', { email, password });
+      
+      // Hardcoded tourist credentials for demo
+      const touristCredentials = [
+        { email: 'tourist1@example.com', password: 'tourist123', name: 'John Doe' },
+        { email: 'tourist2@example.com', password: 'tourist456', name: 'Jane Smith' },
+        { email: 'tourist3@example.com', password: 'tourist789', name: 'Mike Johnson' }
+      ];
+      
+      const touristCred = touristCredentials.find(
+        cred => cred.email === email && cred.password === password
+      );
+      
+      console.log('Found credential:', touristCred);
+      
+      if (!touristCred) {
+        console.log('Invalid credentials for:', { email, password });
+        return res.status(401).json({ error: 'Invalid credentials' });
+      }
+      
+      // Check if user already exists
+      let user = await storage.getUserByEmail(touristCred.email);
+      if (!user) {
+        console.log('Creating new user for:', touristCred.email);
+        user = await storage.createUser({
+          email: touristCred.email,
+          name: touristCred.name,
+          role: 'tourist',
+        });
+      }
+      
+      console.log('Login successful for user:', user);
+      res.json({ user });
+    } catch (error) {
+      console.error('Tourist signin error:', error);
+      res.status(500).json({ error: 'Authentication failed' });
+    }
+  });
+
+  app.post("/api/auth/tourist/register", async (req, res) => {
+    try {
+      const { email, password, name } = req.body;
+      
+      // Check if user already exists
+      const existingUser = await storage.getUserByEmail(email);
+      if (existingUser) {
+        return res.status(400).json({ error: 'User already exists' });
+      }
+      
+      // Create new user
+      const user = await storage.createUser({
+        email,
+        name,
+        role: 'tourist',
+      });
+      
+      res.json({ user });
+    } catch (error) {
+      res.status(500).json({ error: 'Registration failed' });
+    }
+  });
+
   // Tourist routes
   app.post("/api/tourists", async (req, res) => {
     try {

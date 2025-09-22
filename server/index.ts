@@ -65,6 +65,9 @@ app.use((req, res, next) => {
     port,
     host: "localhost",
   }, () => {
-    log(`serving on port ${port}`);
+    log(`🚀 Server started successfully!`);
+    log(`📱 Application running at: http://localhost:${port}`);
+    log(`🌐 Open your browser and navigate to the URL above`);
+    log(`⚡ Press Ctrl+C to stop the server`);
   });
 })();
