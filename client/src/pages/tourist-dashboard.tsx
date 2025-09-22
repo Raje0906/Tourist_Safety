@@ -18,7 +18,8 @@ import {
   Calendar,
   Map,
   ShieldCheck,
-  Navigation
+  Navigation,
+  LogOut
 } from "lucide-react";
 
 export default function TouristDashboard() {
@@ -183,6 +184,21 @@ export default function TouristDashboard() {
   const alerts = (alertsData as any)?.alerts || [];
   const safetyScore = tourist.safetyScore || 85;
 
+  const handleLogout = () => {
+    // Clear localStorage
+    localStorage.removeItem("user");
+    localStorage.removeItem("tourist");
+    
+    // Show logout message
+    toast({
+      title: "Logged Out",
+      description: "You have been successfully logged out.",
+    });
+    
+    // Redirect to login page
+    setLocation("/");
+  };
+
   return (
     <div className="min-h-screen relative">
       <AnimatedBackground />
@@ -213,6 +229,15 @@ export default function TouristDashboard() {
             </Button>
             <Button variant="ghost" size="sm" data-testid="button-profile">
               <User className="w-5 h-5" />
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={handleLogout}
+              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+              data-testid="button-logout"
+            >
+              <LogOut className="w-5 h-5" />
             </Button>
           </div>
         </div>

@@ -1,6 +1,7 @@
 import { type User, type InsertUser, type Tourist, type InsertTourist, type Alert, type InsertAlert, type EmergencyIncident, type InsertEmergencyIncident } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { BlockchainTouristService, type BlockchainTouristProfile } from './blockchain';
+import { MongoStorage } from './mongo-storage';
 
 export interface IStorage {
   // User methods
@@ -27,6 +28,18 @@ export interface IStorage {
   getEmergencyIncidentsByTouristId(touristId: string): Promise<EmergencyIncident[]>;
   createEmergencyIncident(incident: InsertEmergencyIncident): Promise<EmergencyIncident>;
   updateEmergencyIncident(id: string, updates: Partial<EmergencyIncident>): Promise<EmergencyIncident | undefined>;
+  
+  // Digital ID validation methods
+  checkValidDigitalId(userId: string, startDate: Date, endDate: Date): Promise<{ isValid: boolean; tourist?: Tourist; message: string }>;
+  updateTouristTripDates(touristId: string, startDate: Date, endDate: Date, itinerary?: string): Promise<Tourist | undefined>;
+  
+  // Blockchain methods
+  verifyTouristIdentity(touristId: string, message: string, signature: string): Promise<boolean>;
+  verifyTouristProfile(touristId: string, verificationLevel: number): Promise<string | null>;
+  getBlockchainProfile(touristId: string): Promise<any>;
+  emergencyAccessProfile(touristId: string): Promise<string | null>;
+  isProfileVerified(touristId: string): Promise<boolean>;
+  getBlockchainNetworkInfo(): Promise<{ name: string; chainId: number } | null>;
 }
 
 export class MemStorage implements IStorage {
@@ -371,7 +384,7 @@ export class MemStorage implements IStorage {
       );
       
       // Update local record
-      tourist.safetyScore = Math.min(100, tourist.safetyScore + (verificationLevel * 10));
+      tourist.safetyScore = Math.min(100, (tourist.safetyScore || 85) + (verificationLevel * 10));
       this.tourists.set(touristId, tourist);
       
       return txHash;
@@ -442,6 +455,127 @@ export class MemStorage implements IStorage {
       return null;
     }
   }
+  
+  // Helper method to check if digital ID is valid for trip dates
+  private isDigitalIdValid(tourist: Tourist, startDate: Date, endDate: Date): boolean {
+    if (!tourist.digitalIdHash || !tourist.isActive) {
+      return false;
+    }
+    
+    // Check if the existing trip dates cover the new trip dates
+    if (tourist.startDate && tourist.endDate) {
+      const existingStart = new Date(tourist.startDate);
+      const existingEnd = new Date(tourist.endDate);
+      
+      // Add 1 day buffer to existing end date as specified
+      const bufferedEnd = new Date(existingEnd);
+      bufferedEnd.setDate(bufferedEnd.getDate() + 1);
+      
+      // Check if new trip is within existing valid period
+      return startDate >= existingStart && endDate <= bufferedEnd;
+    }
+    
+    return false;
+  }
+
+  // Check if tourist has valid digital ID for given trip dates
+  async checkValidDigitalId(userId: string, startDate: Date, endDate: Date): Promise<{ isValid: boolean; tourist?: Tourist; message: string }> {
+    try {
+      const existingTourist = await this.getTouristByUserId(userId);
+      
+      if (!existingTourist) {
+        return {
+          isValid: false,
+          message: 'No existing digital ID found. Please complete registration.'
+        };
+      }
+      
+      if (this.isDigitalIdValid(existingTourist, startDate, endDate)) {
+        return {
+          isValid: true,
+          tourist: existingTourist,
+          message: `Valid digital ID found. Your ID ${existingTourist.digitalIdHash?.slice(-8)} is valid until ${new Date(existingTourist.endDate!).toLocaleDateString()}.`
+        };
+      }
+      
+      // Check if we need to extend the existing trip
+      if (existingTourist.startDate && existingTourist.endDate) {
+        const existingEnd = new Date(existingTourist.endDate);
+        const newEnd = new Date(endDate);
+        
+        if (newEnd > existingEnd) {
+          return {
+            isValid: false,
+            tourist: existingTourist,
+            message: `Your existing digital ID expires on ${existingEnd.toLocaleDateString()}. You can extend it for your new trip ending ${newEnd.toLocaleDateString()}.`
+          };
+        }
+      }
+      
+      return {
+        isValid: false,
+        tourist: existingTourist,
+        message: 'Your existing digital ID has expired or does not cover your trip dates. Please update your registration.'
+      };
+      
+    } catch (error) {
+      console.error('Error checking digital ID validity:', error);
+      return {
+        isValid: false,
+        message: 'Error checking digital ID. Please try again.'
+      };
+    }
+  }
+
+  // Update tourist trip dates without creating new digital ID
+  async updateTouristTripDates(touristId: string, startDate: Date, endDate: Date, itinerary?: string): Promise<Tourist | undefined> {
+    try {
+      const updates: Partial<Tourist> = {
+        startDate,
+        endDate
+      };
+      
+      if (itinerary) {
+        updates.itinerary = itinerary;
+      }
+      
+      const updatedTourist = await this.updateTourist(touristId, updates);
+      
+      if (updatedTourist) {
+        console.log(`✅ Updated trip dates for tourist ${touristId}`);
+        console.log(`   New dates: ${startDate.toLocaleDateString()} to ${endDate.toLocaleDateString()}`);
+      }
+      
+      return updatedTourist;
+    } catch (error) {
+      console.error('Error updating tourist trip dates:', error);
+      return undefined;
+    }
+  }
 }
 
-export const storage = new MemStorage();
+// Initialize storage based on environment configuration
+let storage: IStorage;
+
+if (process.env.MONGODB_URI) {
+  console.log('🍃 Initializing MongoDB storage...');
+  const mongoStorage = new MongoStorage();
+  
+  // Connect to MongoDB
+  mongoStorage.connect(process.env.MONGODB_URI)
+    .then(() => {
+      console.log('✅ MongoDB storage initialized successfully');
+    })
+    .catch((error) => {
+      console.error('❌ MongoDB connection failed, falling back to in-memory storage:', error);
+      storage = new MemStorage();
+    });
+  
+  storage = mongoStorage;
+} else {
+  console.log('⚠️ MONGODB_URI not set, using in-memory storage');
+  console.log('   To use MongoDB, set MONGODB_URI in your environment variables');
+  storage = new MemStorage();
+}
+
+export { storage };

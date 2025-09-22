@@ -144,6 +144,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Tourist routes
+  // Check if tourist has valid digital ID for trip dates
+  app.post("/api/tourists/check-digital-id", async (req, res) => {
+    try {
+      const { userId, startDate, endDate } = req.body;
+      
+      if (!userId || !startDate || !endDate) {
+        return res.status(400).json({ error: 'Missing required parameters' });
+      }
+      
+      const result = await storage.checkValidDigitalId(
+        userId, 
+        new Date(startDate), 
+        new Date(endDate)
+      );
+      
+      res.json(result);
+    } catch (error) {
+      console.error('Error checking digital ID:', error);
+      res.status(500).json({ error: 'Failed to check digital ID validity' });
+    }
+  });
+  
+  // Update tourist trip dates
+  app.put("/api/tourists/:id/trip-dates", async (req, res) => {
+    try {
+      const { startDate, endDate, itinerary } = req.body;
+      
+      if (!startDate || !endDate) {
+        return res.status(400).json({ error: 'Start date and end date are required' });
+      }
+      
+      const updatedTourist = await storage.updateTouristTripDates(
+        req.params.id,
+        new Date(startDate),
+        new Date(endDate),
+        itinerary
+      );
+      
+      if (!updatedTourist) {
+        return res.status(404).json({ error: 'Tourist not found' });
+      }
+      
+      // Broadcast trip update to admin
+      broadcast({
+        type: 'TRIP_UPDATED',
+        data: updatedTourist
+      });
+      
+      res.json({ tourist: updatedTourist });
+    } catch (error) {
+      console.error('Error updating trip dates:', error);
+      res.status(500).json({ error: 'Failed to update trip dates' });
+    }
+  });
+
   app.post("/api/tourists", async (req, res) => {
     try {
       const touristData = insertTouristSchema.parse(req.body);

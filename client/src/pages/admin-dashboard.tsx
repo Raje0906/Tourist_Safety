@@ -21,7 +21,8 @@ import {
   MessageCircle,
   TrendingUp,
   TrendingDown,
-  Minus
+  Minus,
+  LogOut
 } from "lucide-react";
 
 interface StatisticsData {
@@ -129,6 +130,14 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleLogout = () => {
+    // Clear localStorage
+    localStorage.removeItem("user");
+    
+    // Redirect to login page
+    setLocation("/");
+  };
+
   return (
     <div className="min-h-screen bg-background relative">
       <AnimatedBackground />
@@ -152,6 +161,15 @@ export default function AdminDashboard() {
             </div>
             <Button variant="ghost" size="sm" data-testid="button-settings">
               <Settings className="w-5 h-5" />
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={handleLogout}
+              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+              data-testid="button-logout"
+            >
+              <LogOut className="w-5 h-5" />
             </Button>
           </div>
         </div>

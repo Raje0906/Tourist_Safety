@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import Plasma from "@/components/Plasma";
+import DotGrid from "@/components/DotGrid";
 import { Shield, LogIn, Users, UserCheck, UserPlus } from "lucide-react";
 import { FaGoogle } from "react-icons/fa";
 
@@ -33,11 +33,11 @@ export default function Login() {
       const { user } = await response.json();
 
       localStorage.setItem("user", JSON.stringify(user));
-      setLocation("/registration");
+      setLocation("/trip-validation");
       
       toast({
         title: "Login Successful",
-        description: "Welcome back! Redirecting to your dashboard.",
+        description: "Welcome back! Checking your digital ID...",
       });
     } catch (error) {
       toast({
@@ -63,11 +63,11 @@ export default function Login() {
       const { user } = await response.json();
 
       localStorage.setItem("user", JSON.stringify(user));
-      setLocation("/registration");
+      setLocation("/trip-validation");
       
       toast({
         title: "Registration Successful",
-        description: "Welcome! Please complete your tourist profile.",
+        description: "Welcome! Let's check if you need a new digital ID.",
       });
     } catch (error) {
       toast({
@@ -95,11 +95,11 @@ export default function Login() {
       const { user } = await response.json();
 
       localStorage.setItem("user", JSON.stringify(user));
-      setLocation("/registration");
+      setLocation("/trip-validation");
       
       toast({
         title: "Login Successful",
-        description: "Welcome! Please complete your registration.",
+        description: "Welcome! Let's check your trip details.",
       });
     } catch (error) {
       toast({
@@ -141,13 +141,16 @@ export default function Login() {
   return (
     <div className="min-h-screen relative">
       <div style={{ width: '100%', height: '100vh', position: 'fixed', top: 0, left: 0, zIndex: 0 }}>
-        <Plasma 
-          color="#ff6b35"
-          speed={0.6}
-          direction="forward"
-          scale={1.1}
-          opacity={0.8}
-          mouseInteractive={true}
+        <DotGrid
+          dotSize={10}
+          gap={15}
+          baseColor="#5227FF"
+          activeColor="#5227FF"
+          proximity={120}
+          shockRadius={250}
+          shockStrength={5}
+          resistance={750}
+          returnDuration={1.5}
         />
       </div>
       

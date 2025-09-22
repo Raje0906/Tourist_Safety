@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -51,6 +51,18 @@ export default function TouristRegistration() {
       emergencyPhone: "",
     },
   });
+
+  // Pre-fill trip dates if coming from trip validation
+  useEffect(() => {
+    const tripData = localStorage.getItem("tripData");
+    if (tripData) {
+      const { startDate, endDate } = JSON.parse(tripData);
+      form.setValue("startDate", startDate);
+      form.setValue("endDate", endDate);
+      // Clear the stored trip data
+      localStorage.removeItem("tripData");
+    }
+  }, [form]);
 
   const onSubmit = async (data: RegistrationForm) => {
     const user = localStorage.getItem("user");
