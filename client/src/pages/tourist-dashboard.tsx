@@ -283,10 +283,10 @@ export default function TouristDashboard() {
   };
 
   return (
-    <div className="min-h-screen relative" style={{ background: 'linear-gradient(-45deg, #0f172a, #1e293b, #0369a1, #67e8f9)' }}>
+    <div className="min-h-screen relative" style={{ background: '#2a5e96' }}>
 
       {/* Header */}
-      <header className="bg-card/80 backdrop-blur-sm border-b border-border p-4 relative z-10">
+      <header className="bg-white/10 backdrop-blur-md border-b border-white/20 p-4 relative z-10 shadow-lg" style={{ background: 'rgba(255, 255, 255, 0.1)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}>
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <div className="bg-white/95 backdrop-blur-sm p-2 rounded-lg shadow-xl border border-white/40 flex items-center justify-center w-14 h-14">
@@ -294,7 +294,7 @@ export default function TouristDashboard() {
             </div>
             <div>
               <h1 className="text-xl font-bold">Safe Voyage</h1>
-              <p className="text-sm text-black font-semibold" data-testid="text-user-name">
+              <p className="text-sm text-white font-bold" data-testid="text-user-name">
                 {tourist.firstName} {tourist.lastName}
               </p>
             </div>
@@ -361,7 +361,7 @@ export default function TouristDashboard() {
               </div>
               <div className="flex-1">
                 <h3 className="text-lg font-medium text-green-400 mb-2">Good Safety Status</h3>
-                <p className="text-black text-sm mb-2">
+                <p className="text-white font-bold text-sm mb-2">
                   You're in a safe area. Continue enjoying your trip!
                 </p>
                 <div className="flex space-x-2">
@@ -391,7 +391,7 @@ export default function TouristDashboard() {
                 <AlertTriangle className="text-destructive-foreground w-8 h-8" />
               </Button>
               <h3 className="font-semibold text-destructive mb-2">Emergency</h3>
-              <p className="text-xs text-black">Tap for immediate help</p>
+              <p className="text-xs text-white font-bold">Tap for immediate help</p>
             </CardContent>
           </Card>
 
@@ -406,7 +406,7 @@ export default function TouristDashboard() {
                 <Share2 className="text-primary-foreground w-8 h-8" />
               </Button>
               <h3 className="font-semibold mb-2">Share Location</h3>
-              <p className="text-xs text-black">Share with family</p>
+              <p className="text-xs text-white font-bold">Share with family</p>
             </CardContent>
           </Card>
 
@@ -420,7 +420,7 @@ export default function TouristDashboard() {
                 <Headphones className="text-accent-foreground w-8 h-8" />
               </Button>
               <h3 className="font-semibold mb-2">Support</h3>
-              <p className="text-xs text-black">24/7 assistance</p>
+              <p className="text-xs text-white font-bold">24/7 assistance</p>
             </CardContent>
           </Card>
         </div>
@@ -500,7 +500,7 @@ export default function TouristDashboard() {
                       }`}></div>
                       <div className="flex-1">
                         <p className="text-sm">{alert.message}</p>
-                        <p className="text-xs text-black">
+                        <p className="text-xs text-white font-bold">
                           {new Date(alert.createdAt).toLocaleString()}
                         </p>
                       </div>
@@ -509,8 +509,8 @@ export default function TouristDashboard() {
                 ) : (
                   <div className="text-center py-8">
                     <Bell className="w-12 h-12 text-muted-foreground mb-2 mx-auto opacity-50" />
-                    <p className="text-black">No alerts yet</p>
-                    <p className="text-sm text-black mt-1">You'll be notified of any important updates</p>
+                    <p className="text-white font-bold">No alerts yet</p>
+                    <p className="text-sm text-white font-bold mt-1">You'll be notified of any important updates</p>
                   </div>
                 )}
               </div>
@@ -534,21 +534,21 @@ export default function TouristDashboard() {
                     : "Not Set"
                   }
                 </p>
-                <p className="text-sm text-black">Trip Duration</p>
+                <p className="text-sm text-white font-bold">Trip Duration</p>
               </div>
               <div className="text-center p-4 bg-muted/30 rounded-lg">
                 <MapPin className="w-8 h-8 text-primary mb-2 mx-auto" />
                 <p className="font-medium" data-testid="text-planned-locations">
                   {tourist.itinerary ? tourist.itinerary.split(',').length : 0} Locations
                 </p>
-                <p className="text-sm text-black">Planned Visits</p>
+                <p className="text-sm text-white font-bold">Planned Visits</p>
               </div>
               <div className="text-center p-4 bg-muted/30 rounded-lg">
                 <ShieldCheck className="w-8 h-8 text-primary mb-2 mx-auto" />
                 <p className="font-medium text-green-400" data-testid="text-digital-id-status">
                   Verified
                 </p>
-                <p className="text-sm text-black">Digital ID</p>
+                <p className="text-sm text-white font-bold">Digital ID</p>
               </div>
             </div>
           </CardContent>

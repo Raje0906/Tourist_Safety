@@ -471,11 +471,11 @@ export default function AdminDashboard() {
   };
 
   return (
-    <div className="min-h-screen relative" style={{ background: 'linear-gradient(-45deg, #0f172a, #1e293b, #0369a1, #67e8f9)' }}>
+    <div className="min-h-screen relative" style={{ background: '#2a5e96' }}>
       <AnimatedBackground />
 
       {/* Admin Header */}
-      <header className="bg-card border-b border-border p-4 relative z-10">
+      <header className="bg-white/10 backdrop-blur-md border-b border-white/20 p-4 relative z-10 shadow-lg" style={{ background: 'rgba(255, 255, 255, 0.1)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}>
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
@@ -483,7 +483,7 @@ export default function AdminDashboard() {
             </div>
             <div>
               <h1 className="text-xl font-bold">Admin Dashboard</h1>
-              <p className="text-sm text-black">Safe Voyage System</p>
+              <p className="text-sm text-white font-bold">Safe Voyage System</p>
             </div>
           </div>
           <div className="flex items-center space-x-4">
@@ -523,7 +523,7 @@ export default function AdminDashboard() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-black text-sm">Active Tourists</p>
+                  <p className="text-white font-bold text-sm">Active Tourists</p>
                   <p className="text-2xl font-bold text-primary" data-testid="stat-active-tourists">
                     {statistics.activeTourists}
                   </p>
@@ -543,7 +543,7 @@ export default function AdminDashboard() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-black text-sm">Active Alerts</p>
+                  <p className="text-white font-bold text-sm">Active Alerts</p>
                   <p className="text-2xl font-bold text-yellow-400" data-testid="stat-active-alerts">
                     {statistics.activeAlerts}
                   </p>
@@ -563,7 +563,7 @@ export default function AdminDashboard() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-black text-sm">Emergency Calls</p>
+                  <p className="text-white font-bold text-sm">Emergency Calls</p>
                   <p className="text-2xl font-bold text-destructive" data-testid="stat-emergency-calls">
                     {statistics.emergencyIncidents}
                   </p>
@@ -583,7 +583,7 @@ export default function AdminDashboard() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-black text-sm">Safety Score Avg</p>
+                  <p className="text-white font-bold text-sm">Safety Score Avg</p>
                   <p className="text-2xl font-bold text-green-400" data-testid="stat-safety-score">
                     {statistics.averageSafetyScore}
                   </p>
@@ -603,7 +603,7 @@ export default function AdminDashboard() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-black text-sm">AI Anomalies</p>
+                  <p className="text-white font-bold text-sm">AI Anomalies</p>
                   <p className="text-2xl font-bold text-orange-500" data-testid="stat-anomalies">
                     {statistics.unresolvedAnomalies}
                   </p>
@@ -623,7 +623,7 @@ export default function AdminDashboard() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-black text-sm">Pending E-FIRs</p>
+                  <p className="text-white font-bold text-sm">Pending E-FIRs</p>
                   <p className="text-2xl font-bold text-red-500" data-testid="stat-efirs">
                     {statistics.pendingEFIRs}
                   </p>
@@ -811,12 +811,12 @@ export default function AdminDashboard() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-border">
-                    <th className="text-left py-3 px-4 font-medium text-black">ID</th>
-                    <th className="text-left py-3 px-4 font-medium text-black">Name</th>
-                    <th className="text-left py-3 px-4 font-medium text-black">Location</th>
-                    <th className="text-left py-3 px-4 font-medium text-black">Safety Score</th>
-                    <th className="text-left py-3 px-4 font-medium text-black">Status</th>
-                    <th className="text-left py-3 px-4 font-medium text-black">Actions</th>
+                    <th className="text-left py-3 px-4 font-bold text-white">ID</th>
+                    <th className="text-left py-3 px-4 font-bold text-white">Name</th>
+                    <th className="text-left py-3 px-4 font-bold text-white">Location</th>
+                    <th className="text-left py-3 px-4 font-bold text-white">Safety Score</th>
+                    <th className="text-left py-3 px-4 font-bold text-white">Status</th>
+                    <th className="text-left py-3 px-4 font-bold text-white">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
@@ -907,7 +907,7 @@ export default function AdminDashboard() {
 
             {tourists.length > 0 && (
               <div className="flex items-center justify-between mt-6 pt-4 border-t border-border">
-                <p className="text-sm text-black">
+                <p className="text-sm text-white font-bold">
                   Showing 1-{Math.min(20, tourists.length)} of {tourists.length} tourists
                 </p>
                 <div className="flex space-x-2">
