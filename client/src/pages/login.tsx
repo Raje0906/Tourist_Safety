@@ -142,26 +142,26 @@ export default function Login() {
 
   return (
     <div className="min-h-screen relative" style={{
-      backgroundImage: 'linear-gradient(rgba(15, 23, 42, 0.6), rgba(15, 23, 42, 0.6)), url("/pexels-jimmy-teoh-294331-1010640.jpg")',
+      backgroundImage: 'linear-gradient(rgba(15, 23, 42, 0.6), rgba(15, 23, 42, 0.6)), url("/pexels-bhavitya-3224533.jpg")',
       backgroundSize: 'cover',
       backgroundPosition: 'center',
       backgroundRepeat: 'no-repeat'
     }}>
       
-      <div className="min-h-screen flex items-center justify-center p-4 relative z-10">
-        <div className="w-full max-w-md">
+      <div className="min-h-screen flex items-center justify-center p-6 relative z-10">
+        <div className="w-full max-w-lg">
           {/* Logo and Header */}
-          <div className="text-center mb-8">
-            <SafeVoyageLogo className="mx-auto mb-4" size={64} showText={false} />
-            <h1 className="text-4xl font-bold text-black drop-shadow-2xl mb-2 stroke-text">Welcome to SafeVoyage</h1>
+          <div className="text-center mb-10">
+            <SafeVoyageLogo className="mx-auto mb-6" size={72} showText={false} />
+            <h1 className="text-4xl font-bold text-black drop-shadow-2xl mb-3 stroke-text">Welcome to SafeVoyage</h1>
             <p className="text-black text-xl font-semibold drop-shadow-xl">Your trusted travel safety companion</p>
           </div>
 
           {/* Login Mode Selector */}
-          <div className="flex mb-6 bg-card/40 backdrop-blur-sm rounded-xl p-2 border border-border">
+          <div className="flex mb-8 bg-card/40 backdrop-blur-sm rounded-xl p-2 border border-border">
             <button
               onClick={() => setLoginMode('tourist')}
-              className={`flex-1 flex items-center justify-center py-3 px-4 rounded-lg transition-all duration-300 ${
+              className={`flex-1 flex items-center justify-center py-4 px-6 rounded-lg transition-all duration-300 ${
                 loginMode === 'tourist' 
                   ? 'text-primary-foreground shadow-lg transform scale-105' 
                   : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
@@ -173,7 +173,7 @@ export default function Login() {
             </button>
             <button
               onClick={() => setLoginMode('admin')}
-              className={`flex-1 flex items-center justify-center py-3 px-4 rounded-lg transition-all duration-300 ${
+              className={`flex-1 flex items-center justify-center py-4 px-6 rounded-lg transition-all duration-300 ${
                 loginMode === 'admin' 
                   ? 'text-primary-foreground shadow-lg transform scale-105' 
                   : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
@@ -187,19 +187,19 @@ export default function Login() {
 
           {/* Login Form */}
           <Card className="bg-card/20 backdrop-blur-md border border-white/20 shadow-2xl" style={{ background: 'rgba(255, 255, 255, 0.1)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', borderRadius: '16px', boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.37)' }}>
-            <CardContent className="pt-6">
-              <h2 className="text-xl font-semibold text-center mb-6">
+            <CardContent className="p-8">
+              <h2 className="text-xl font-semibold text-center mb-8">
                 {loginMode === 'tourist' ? 'Welcome Tourist' : 'Admin Portal'}
               </h2>
               
               {loginMode === 'tourist' ? (
                 /* Tourist Login */
-                <div className="space-y-4">
+                <div className="space-y-6">
                   {/* Tourist Mode Selector */}
-                  <div className="flex mb-4 bg-muted/20 rounded-lg p-1">
+                  <div className="flex mb-6 bg-muted/20 rounded-lg p-1">
                     <button
                       onClick={() => setTouristMode('signin')}
-                      className={`flex-1 flex items-center justify-center py-2 px-3 rounded-md transition-all duration-200 text-sm ${
+                      className={`flex-1 flex items-center justify-center py-3 px-4 rounded-md transition-all duration-200 text-sm ${
                         touristMode === 'signin' 
                           ? 'text-primary-foreground shadow-sm' 
                           : 'hover:text-foreground'
@@ -214,7 +214,7 @@ export default function Login() {
                     </button>
                     <button
                       onClick={() => setTouristMode('register')}
-                      className={`flex-1 flex items-center justify-center py-2 px-3 rounded-md transition-all duration-200 text-sm ${
+                      className={`flex-1 flex items-center justify-center py-3 px-4 rounded-md transition-all duration-200 text-sm ${
                         touristMode === 'register' 
                           ? 'text-primary-foreground shadow-sm' 
                           : 'hover:text-foreground'
@@ -231,13 +231,13 @@ export default function Login() {
 
                   {touristMode === 'signin' ? (
                     /* Sign In Form */
-                    <form onSubmit={handleTouristSignin} className="space-y-4">
+                    <form onSubmit={handleTouristSignin} className="space-y-5">
                       <Input
                         type="email"
                         placeholder="Email Address"
                         value={touristCredentials.email}
                         onChange={(e) => setTouristCredentials(prev => ({ ...prev, email: e.target.value }))}
-                        className="w-full px-4 py-3 bg-input border border-border rounded-lg focus:ring-2 focus:ring-ring focus:border-transparent"
+                        className="w-full px-4 py-4 bg-input border border-border rounded-lg focus:ring-2 focus:ring-ring focus:border-transparent"
                         required
                       />
                       
@@ -246,14 +246,14 @@ export default function Login() {
                         placeholder="Password"
                         value={touristCredentials.password}
                         onChange={(e) => setTouristCredentials(prev => ({ ...prev, password: e.target.value }))}
-                        className="w-full px-4 py-3 bg-input border border-border rounded-lg focus:ring-2 focus:ring-ring focus:border-transparent"
+                        className="w-full px-4 py-4 bg-input border border-border rounded-lg focus:ring-2 focus:ring-ring focus:border-transparent"
                         required
                       />
                       
                       <Button
                         type="submit"
                         disabled={isLoading || !touristCredentials.email || !touristCredentials.password}
-                        className="w-full py-3 px-4 rounded-lg font-medium hover:opacity-90 transition-all duration-200"
+                        className="w-full py-4 px-4 rounded-lg font-medium hover:opacity-90 transition-all duration-200 mt-6"
                         style={{ backgroundColor: '#2563eb', color: 'white' }}
                       >
                         <LogIn className="mr-2 w-4 h-4" />
@@ -262,13 +262,13 @@ export default function Login() {
                     </form>
                   ) : (
                     /* Register Form */
-                    <form onSubmit={handleTouristRegister} className="space-y-4">
+                    <form onSubmit={handleTouristRegister} className="space-y-5">
                       <Input
                         type="text"
                         placeholder="Full Name"
                         value={touristCredentials.name}
                         onChange={(e) => setTouristCredentials(prev => ({ ...prev, name: e.target.value }))}
-                        className="w-full px-4 py-3 bg-input border border-border rounded-lg focus:ring-2 focus:ring-ring focus:border-transparent"
+                        className="w-full px-4 py-4 bg-input border border-border rounded-lg focus:ring-2 focus:ring-ring focus:border-transparent"
                         required
                       />
                       
@@ -277,7 +277,7 @@ export default function Login() {
                         placeholder="Email Address"
                         value={touristCredentials.email}
                         onChange={(e) => setTouristCredentials(prev => ({ ...prev, email: e.target.value }))}
-                        className="w-full px-4 py-3 bg-input border border-border rounded-lg focus:ring-2 focus:ring-ring focus:border-transparent"
+                        className="w-full px-4 py-4 bg-input border border-border rounded-lg focus:ring-2 focus:ring-ring focus:border-transparent"
                         required
                       />
                       
@@ -286,14 +286,14 @@ export default function Login() {
                         placeholder="Password"
                         value={touristCredentials.password}
                         onChange={(e) => setTouristCredentials(prev => ({ ...prev, password: e.target.value }))}
-                        className="w-full px-4 py-3 bg-input border border-border rounded-lg focus:ring-2 focus:ring-ring focus:border-transparent"
+                        className="w-full px-4 py-4 bg-input border border-border rounded-lg focus:ring-2 focus:ring-ring focus:border-transparent"
                         required
                       />
                       
                       <Button
                         type="submit"
                         disabled={isLoading || !touristCredentials.email || !touristCredentials.password || !touristCredentials.name}
-                        className="w-full py-3 px-4 rounded-lg font-medium hover:opacity-90 transition-all duration-200"
+                        className="w-full py-4 px-4 rounded-lg font-medium hover:opacity-90 transition-all duration-200 mt-6"
                         style={{ backgroundColor: '#2563eb', color: 'white' }}
                       >
                         <UserPlus className="mr-2 w-4 h-4" />
@@ -303,7 +303,7 @@ export default function Login() {
                   )}
 
                   {/* Optional Google Login */}
-                  <div className="flex items-center my-4">
+                  <div className="flex items-center my-6">
                     <hr className="flex-1 border-border" />
                     <span className="px-3 text-muted-foreground text-sm">or</span>
                     <hr className="flex-1 border-border" />
@@ -312,7 +312,7 @@ export default function Login() {
                   <Button
                     onClick={handleGoogleLogin}
                     disabled={isLoading}
-                    className="w-full bg-white text-gray-800 py-3 px-4 rounded-lg font-medium hover:bg-gray-100 transition-all duration-200 flex items-center justify-center border"
+                    className="w-full bg-white text-gray-800 py-4 px-4 rounded-lg font-medium hover:bg-gray-100 transition-all duration-200 flex items-center justify-center border"
                     variant="outline"
                   >
                     <FaGoogle className="mr-3 text-lg" />
@@ -321,8 +321,8 @@ export default function Login() {
                 </div>
               ) : (
                 /* Admin Login */
-                <form onSubmit={handleAdminLogin} className="space-y-4">
-                  <p className="text-center mb-4" style={{ color: 'black' }}>
+                <form onSubmit={handleAdminLogin} className="space-y-6">
+                  <p className="text-center mb-6" style={{ color: 'black' }}>
                     Secure admin access for system management
                   </p>
                   
@@ -331,7 +331,7 @@ export default function Login() {
                     placeholder="Admin Username"
                     value={adminCredentials.username}
                     onChange={(e) => setAdminCredentials(prev => ({ ...prev, username: e.target.value }))}
-                    className="w-full px-4 py-3 bg-input border border-border rounded-lg focus:ring-2 focus:ring-ring focus:border-transparent"
+                    className="w-full px-4 py-4 bg-input border border-border rounded-lg focus:ring-2 focus:ring-ring focus:border-transparent"
                     data-testid="input-admin-username"
                   />
                   
@@ -340,14 +340,14 @@ export default function Login() {
                     placeholder="Admin Password"
                     value={adminCredentials.password}
                     onChange={(e) => setAdminCredentials(prev => ({ ...prev, password: e.target.value }))}
-                    className="w-full px-4 py-3 bg-input border border-border rounded-lg focus:ring-2 focus:ring-ring focus:border-transparent"
+                    className="w-full px-4 py-4 bg-input border border-border rounded-lg focus:ring-2 focus:ring-ring focus:border-transparent"
                     data-testid="input-admin-password"
                   />
                   
                   <Button
                     type="submit"
                     disabled={isLoading || !adminCredentials.username || !adminCredentials.password}
-                    className="w-full py-3 px-4 rounded-lg font-medium hover:opacity-90 transition-all duration-200"
+                    className="w-full py-4 px-4 rounded-lg font-medium hover:opacity-90 transition-all duration-200 mt-6"
                     style={{ backgroundColor: '#2563eb', color: 'white' }}
                     data-testid="button-admin-login"
                   >
@@ -357,7 +357,7 @@ export default function Login() {
                 </form>
               )}
 
-              <p className="text-xs text-center mt-6 text-white font-medium drop-shadow-lg">
+              <p className="text-xs text-center mt-8 text-white font-medium drop-shadow-lg">
                 By continuing, you agree to our Terms of Service and Privacy Policy
               </p>
             </CardContent>
@@ -365,7 +365,7 @@ export default function Login() {
 
           {/* Demo credentials hint - only show for admin mode */}
           {loginMode === 'admin' && (
-            <div className="mt-4 p-4 bg-white/10 backdrop-blur-md border border-white/20 rounded-lg shadow-2xl" style={{ background: 'rgba(255, 255, 255, 0.1)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}>
+            <div className="mt-6 p-5 bg-white/10 backdrop-blur-md border border-white/20 rounded-lg shadow-2xl" style={{ background: 'rgba(255, 255, 255, 0.1)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}>
               <p className="text-sm text-center text-white font-semibold drop-shadow-lg">
                 <strong className="text-orange-300">Demo Admin Credentials:</strong><br />
                 <span className="text-white/90">Username: admin1, Password: admin123</span><br />
@@ -376,7 +376,7 @@ export default function Login() {
           
           {/* Tourist info hint - only show for tourist mode */}
           {loginMode === 'tourist' && (
-            <div className="mt-4 p-4 bg-white/10 backdrop-blur-md border border-white/20 rounded-lg shadow-2xl" style={{ background: 'rgba(255, 255, 255, 0.1)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}>
+            <div className="mt-6 p-5 bg-white/10 backdrop-blur-md border border-white/20 rounded-lg shadow-2xl" style={{ background: 'rgba(255, 255, 255, 0.1)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}>
               <p className="text-sm text-center text-white font-semibold drop-shadow-lg">
                 <strong className="text-orange-300">Demo Tourist Credentials:</strong><br />
                 <span className="text-white/90">Email: tourist1@example.com, Password: tourist123</span><br />

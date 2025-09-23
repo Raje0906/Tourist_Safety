@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -43,6 +43,9 @@ export default function AdminDashboard() {
   const { lastMessage, isConnected } = useWebSocket();
   const [showEFIRForm, setShowEFIRForm] = useState(false);
   const [selectedTouristId, setSelectedTouristId] = useState<string | null>(null);
+  const [mapView, setMapView] = useState<'live' | '1h' | '1d'>('live');
+  const mapRef = useRef<any>(null);
+  const mapInstanceRef = useRef<any>(null);
 
   // Get user data from localStorage
   const user = JSON.parse(localStorage.getItem("user") || "{}");
@@ -84,6 +87,285 @@ export default function AdminDashboard() {
     queryKey: ['/api/efirs'],
   });
 
+  const statistics = statisticsData || { activeTourists: 0, activeAlerts: 0, emergencyIncidents: 0, averageSafetyScore: 0, unresolvedAnomalies: 0, pendingEFIRs: 0 };
+  const tourists = (touristsData as any)?.tourists || [];
+  const alerts = (alertsData as any)?.alerts || [];
+  const incidents = (incidentsData as any)?.incidents || [];
+  const anomalies = (anomaliesData as any)?.anomalies || [];
+  const efirs = (efirsData as any)?.efirs || [];
+
+  // Update tourist markers on map based on database users with last stored location
+  const updateTouristMarkers = async (map: any, L: any) => {
+    if (!map || !tourists.length) return;
+
+    // Clear existing markers
+    map.eachLayer((layer: any) => {
+      if (layer.options && layer.options.isMarker) {
+        map.removeLayer(layer);
+      }
+    });
+
+    // Add markers for each active tourist with their last stored location
+    tourists.forEach((tourist: any, index: number) => {
+      // Use actual stored coordinates from database (lat/lng fields)
+      // If no coordinates stored, use demo coordinates around different cities for visualization
+      const demoLocations = [
+        [19.0760, 72.8777], // Mumbai, India
+        [28.6139, 77.2090], // Delhi, India
+        [12.9716, 77.5946], // Bangalore, India
+        [13.0827, 80.2707], // Chennai, India
+        [22.5726, 88.3639], // Kolkata, India
+        [18.5204, 73.8567], // Pune, India
+        [23.0225, 72.5714], // Ahmedabad, India
+        [26.9124, 75.7873], // Jaipur, India
+      ];
+      
+      // Priority: Use actual coordinates from database, fallback to demo locations
+      const lat = tourist.lastKnownLatitude || tourist.latitude || 
+                 demoLocations[index % demoLocations.length][0] + (Math.random() - 0.5) * 0.02;
+      const lng = tourist.lastKnownLongitude || tourist.longitude || 
+                 demoLocations[index % demoLocations.length][1] + (Math.random() - 0.5) * 0.02;
+      
+      // Only show active users (filter by status or recent activity)
+      const isActive = tourist.isActive !== false && tourist.status !== 'inactive';
+      if (!isActive) return; // Skip inactive users
+      
+      // Create custom pin icon based on safety score and activity status
+      const getMarkerColor = (score: number, isOnline: boolean) => {
+        if (!isOnline) return '#9ca3af'; // gray for offline
+        if (score >= 80) return '#22c55e'; // green for safe
+        if (score >= 60) return '#eab308'; // yellow for caution
+        return '#ef4444'; // red for alert
+      };
+      
+      const isOnline = tourist.lastSeen ? 
+        (Date.now() - new Date(tourist.lastSeen).getTime()) < 300000 : true; // 5 min threshold
+      const color = getMarkerColor(tourist.safetyScore || 50, isOnline);
+      
+      // Enhanced pin with status indicator
+      const customIcon = L.divIcon({
+        html: `
+          <div style="
+            position: relative;
+            background-color: ${color};
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: 3px solid white;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            ${isOnline ? 'animation: pulse 2s infinite;' : ''}
+          "></div>
+          ${isOnline ? `
+            <div style="
+              position: absolute;
+              top: -2px;
+              right: -2px;
+              width: 6px;
+              height: 6px;
+              background-color: #10b981;
+              border: 1px solid white;
+              border-radius: 50%;
+              animation: ping 1s infinite;
+            "></div>
+          ` : ''}
+          <style>
+            @keyframes pulse {
+              0% { transform: scale(1); opacity: 1; }
+              50% { transform: scale(1.1); opacity: 0.8; }
+              100% { transform: scale(1); opacity: 1; }
+            }
+            @keyframes ping {
+              0% { transform: scale(1); opacity: 1; }
+              75%, 100% { transform: scale(1.5); opacity: 0; }
+            }
+          </style>
+        `,
+        className: 'custom-tourist-pin',
+        iconSize: [16, 16],
+        iconAnchor: [8, 8]
+      });
+
+      const marker = L.marker([lat, lng], { 
+        icon: customIcon,
+        isMarker: true 
+      }).addTo(map);
+      
+      // Enhanced popup with detailed user information from database
+      const lastSeenText = tourist.lastSeen ? 
+        `${new Date(tourist.lastSeen).toLocaleString()}` : 'Unknown';
+      const statusText = isOnline ? 'Online' : 'Offline';
+      const locationText = tourist.currentLocation || 
+        `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+      
+      marker.bindPopup(`
+        <div style="padding: 12px; min-width: 220px; font-family: system-ui;">
+          <div style="display: flex; align-items: center; margin-bottom: 8px;">
+            <div style="
+              width: 12px; height: 12px; 
+              background-color: ${color}; 
+              border-radius: 50%; 
+              margin-right: 8px;
+              ${isOnline ? 'animation: pulse 1s infinite;' : ''}
+            "></div>
+            <h4 style="margin: 0; font-weight: bold; font-size: 14px;">
+              ${tourist.firstName || 'Unknown'} ${tourist.lastName || 'User'}
+            </h4>
+          </div>
+          
+          <div style="font-size: 11px; color: #666; line-height: 1.4;">
+            <p style="margin: 3px 0;"><strong>ID:</strong> #${tourist.digitalIdHash?.slice(-8) || tourist.id?.slice(-8) || 'N/A'}</p>
+            <p style="margin: 3px 0;"><strong>Status:</strong> 
+              <span style="color: ${isOnline ? '#10b981' : '#6b7280'}; font-weight: bold;">${statusText}</span>
+            </p>
+            <p style="margin: 3px 0;"><strong>Safety Score:</strong> 
+              <span style="color: ${color}; font-weight: bold;">${tourist.safetyScore || 'N/A'}</span>
+            </p>
+            <p style="margin: 3px 0;"><strong>Alert Level:</strong> 
+              ${tourist.safetyScore >= 80 ? '🟢 Safe' : tourist.safetyScore >= 60 ? '🟡 Caution' : '🔴 Alert'}
+            </p>
+            <p style="margin: 3px 0;"><strong>Location:</strong> ${locationText}</p>
+            <p style="margin: 3px 0;"><strong>Last Seen:</strong> ${lastSeenText}</p>
+            ${tourist.email ? `<p style="margin: 3px 0;"><strong>Email:</strong> ${tourist.email}</p>` : ''}
+          </div>
+          
+          <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #e5e7eb;">
+            <button onclick="alert('Tracking user: ${tourist.firstName} ${tourist.lastName}')" 
+                    style="background: #3b82f6; color: white; border: none; padding: 4px 8px; 
+                           border-radius: 4px; font-size: 10px; cursor: pointer;">
+              📍 Track User
+            </button>
+            <button onclick="alert('Sending message to: ${tourist.firstName} ${tourist.lastName}')" 
+                    style="background: #10b981; color: white; border: none; padding: 4px 8px; 
+                           border-radius: 4px; font-size: 10px; cursor: pointer; margin-left: 4px;">
+              💬 Message
+            </button>
+          </div>
+        </div>
+      `);
+    });
+
+    // Add risk zones with enhanced styling
+    const riskZones = [
+      { lat: 19.0760, lng: 72.8777, radius: 800, risk: 'high', name: 'High Risk Zone - Downtown' },
+      { lat: 28.6139, lng: 77.2090, radius: 600, risk: 'medium', name: 'Medium Risk - Station Area' },
+      { lat: 12.9716, lng: 77.5946, radius: 500, risk: 'low', name: 'Safe Zone - Tech Park' }
+    ];
+
+    riskZones.forEach(zone => {
+      const color = zone.risk === 'high' ? '#ef4444' : zone.risk === 'medium' ? '#f59e0b' : '#10b981';
+      const circle = L.circle([zone.lat, zone.lng], {
+        color: color,
+        fillColor: color,
+        fillOpacity: 0.15,
+        weight: 2,
+        radius: zone.radius,
+        isMarker: true
+      }).addTo(map);
+      
+      circle.bindPopup(`
+        <div style="padding: 10px; font-family: system-ui;">
+          <h4 style="margin: 0 0 8px 0; color: ${color}; font-size: 14px;">${zone.name}</h4>
+          <p style="margin: 4px 0; font-size: 12px;"><strong>Risk Level:</strong> ${zone.risk.toUpperCase()}</p>
+          <p style="margin: 4px 0; font-size: 12px;"><strong>Coverage:</strong> ${zone.radius}m radius</p>
+          <p style="margin: 4px 0; font-size: 11px; color: #666;">Active monitoring zone</p>
+        </div>
+      `);
+    });
+
+    // Auto-fit map bounds to show all markers if there are users
+    if (tourists.length > 0) {
+      const group = new L.featureGroup();
+      const demoLocations = [
+        [19.0760, 72.8777], // Mumbai, India
+        [28.6139, 77.2090], // Delhi, India
+        [12.9716, 77.5946], // Bangalore, India
+        [13.0827, 80.2707], // Chennai, India
+        [22.5726, 88.3639], // Kolkata, India
+        [18.5204, 73.8567], // Pune, India
+        [23.0225, 72.5714], // Ahmedabad, India
+        [26.9124, 75.7873], // Jaipur, India
+      ];
+      
+      tourists.forEach((tourist: any, index: number) => {
+        const lat = tourist.lastKnownLatitude || tourist.latitude || 
+                   demoLocations[index % demoLocations.length][0];
+        const lng = tourist.lastKnownLongitude || tourist.longitude || 
+                   demoLocations[index % demoLocations.length][1];
+        group.addLayer(L.marker([lat, lng]));
+      });
+      
+      try {
+        map.fitBounds(group.getBounds().pad(0.1));
+      } catch (e) {
+        // Fallback if bounds calculation fails
+        map.setView([19.0760, 72.8777], 10);
+      }
+    }
+  };
+
+  // Initialize real map with tourist locations
+  useEffect(() => {
+    const initializeMap = async () => {
+      if (typeof window === 'undefined') return;
+      
+      try {
+        // Dynamically import Leaflet to avoid SSR issues
+        const L = (await import('leaflet')).default;
+        
+        // Import Leaflet CSS
+        if (!document.querySelector('link[href*="leaflet"]')) {
+          const link = document.createElement('link');
+          link.rel = 'stylesheet';
+          link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+          document.head.appendChild(link);
+        }
+
+        if (mapRef.current && !mapInstanceRef.current) {
+          // Initialize map centered on a default location (e.g., Mumbai, India)
+          const map = L.map(mapRef.current).setView([19.0760, 72.8777], 10);
+          
+          // Add OpenStreetMap tiles
+          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+          }).addTo(map);
+
+          mapInstanceRef.current = map;
+          
+          // Add tourist markers when data is available
+          updateTouristMarkers(map, L);
+        }
+      } catch (error) {
+        console.error('Error initializing map:', error);
+      }
+    };
+
+    initializeMap();
+    
+    // Cleanup on unmount
+    return () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+      }
+    };
+  }, []);
+
+  // Update markers when tourist data changes
+  useEffect(() => {
+    if (mapInstanceRef.current && tourists.length > 0) {
+      const initLeaflet = async () => {
+        const L = (await import('leaflet')).default;
+        updateTouristMarkers(mapInstanceRef.current, L);
+      };
+      initLeaflet();
+    }
+  }, [tourists]);
+
+  const handleMapViewChange = (view: 'live' | '1h' | '1d') => {
+    setMapView(view);
+    // In a real implementation, this would filter data based on time range
+  };
+
   // Handle WebSocket messages for real-time updates
   useEffect(() => {
     if (lastMessage) {
@@ -115,13 +397,6 @@ export default function AdminDashboard() {
       }
     }
   }, [lastMessage, refetchTourists, refetchAlerts, refetchIncidents, refetchStatistics, refetchAnomalies, refetchEFIRs]);
-
-  const statistics = statisticsData || { activeTourists: 0, activeAlerts: 0, emergencyIncidents: 0, averageSafetyScore: 0, unresolvedAnomalies: 0, pendingEFIRs: 0 };
-  const tourists = (touristsData as any)?.tourists || [];
-  const alerts = (alertsData as any)?.alerts || [];
-  const incidents = (incidentsData as any)?.incidents || [];
-  const anomalies = (anomaliesData as any)?.anomalies || [];
-  const efirs = (efirsData as any)?.efirs || [];
 
   const handleExportData = () => {
     const data = {
@@ -208,7 +483,7 @@ export default function AdminDashboard() {
             </div>
             <div>
               <h1 className="text-xl font-bold">Admin Dashboard</h1>
-              <p className="text-sm text-muted-foreground">Safe Voyage System</p>
+              <p className="text-sm text-black">Safe Voyage System</p>
             </div>
           </div>
           <div className="flex items-center space-x-4">
@@ -248,7 +523,7 @@ export default function AdminDashboard() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-muted-foreground text-sm">Active Tourists</p>
+                  <p className="text-black text-sm">Active Tourists</p>
                   <p className="text-2xl font-bold text-primary" data-testid="stat-active-tourists">
                     {statistics.activeTourists}
                   </p>
@@ -268,7 +543,7 @@ export default function AdminDashboard() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-muted-foreground text-sm">Active Alerts</p>
+                  <p className="text-black text-sm">Active Alerts</p>
                   <p className="text-2xl font-bold text-yellow-400" data-testid="stat-active-alerts">
                     {statistics.activeAlerts}
                   </p>
@@ -288,7 +563,7 @@ export default function AdminDashboard() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-muted-foreground text-sm">Emergency Calls</p>
+                  <p className="text-black text-sm">Emergency Calls</p>
                   <p className="text-2xl font-bold text-destructive" data-testid="stat-emergency-calls">
                     {statistics.emergencyIncidents}
                   </p>
@@ -308,7 +583,7 @@ export default function AdminDashboard() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-muted-foreground text-sm">Safety Score Avg</p>
+                  <p className="text-black text-sm">Safety Score Avg</p>
                   <p className="text-2xl font-bold text-green-400" data-testid="stat-safety-score">
                     {statistics.averageSafetyScore}
                   </p>
@@ -328,7 +603,7 @@ export default function AdminDashboard() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-muted-foreground text-sm">AI Anomalies</p>
+                  <p className="text-black text-sm">AI Anomalies</p>
                   <p className="text-2xl font-bold text-orange-500" data-testid="stat-anomalies">
                     {statistics.unresolvedAnomalies}
                   </p>
@@ -348,7 +623,7 @@ export default function AdminDashboard() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-muted-foreground text-sm">Pending E-FIRs</p>
+                  <p className="text-black text-sm">Pending E-FIRs</p>
                   <p className="text-2xl font-bold text-red-500" data-testid="stat-efirs">
                     {statistics.pendingEFIRs}
                   </p>
@@ -377,19 +652,88 @@ export default function AdminDashboard() {
                     Tourist Heat Map
                   </h3>
                   <div className="flex space-x-2">
-                    <Button size="sm" variant="default" data-testid="button-live-view">Live</Button>
-                    <Button size="sm" variant="outline" data-testid="button-1h-view">1H</Button>
-                    <Button size="sm" variant="outline" data-testid="button-1d-view">1D</Button>
+                    <Button 
+                      size="sm" 
+                      variant={mapView === 'live' ? 'default' : 'outline'}
+                      onClick={() => handleMapViewChange('live')}
+                      data-testid="button-live-view"
+                    >
+                      Live
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant={mapView === '1h' ? 'default' : 'outline'}
+                      onClick={() => handleMapViewChange('1h')}
+                      data-testid="button-1h-view"
+                    >
+                      1H
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant={mapView === '1d' ? 'default' : 'outline'}
+                      onClick={() => handleMapViewChange('1d')}
+                      data-testid="button-1d-view"
+                    >
+                      1D
+                    </Button>
                   </div>
                 </div>
-                <div className="bg-muted/30 rounded-lg h-80 flex items-center justify-center border">
-                  <div className="text-center">
-                    <MapPin className="w-16 h-16 text-muted-foreground mb-4 mx-auto opacity-50" />
-                    <p className="text-muted-foreground">Interactive Heat Map</p>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Showing tourist density and risk zones
-                    </p>
+                
+                {/* Real Map Container */}
+                <div className="relative">
+                  <div 
+                    ref={mapRef}
+                    className="w-full h-80 rounded-lg border bg-gray-100"
+                    style={{ zIndex: 1 }}
+                  ></div>
+                  
+                  {/* Map Controls Overlay */}
+                  <div className="absolute top-4 right-4 bg-black/70 backdrop-blur-sm rounded-lg p-3 text-xs z-10">
+                    <div className="space-y-1">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                        <span className="text-white">Live Updates</span>
+                      </div>
+                      <div className="text-white/80">{statistics.activeTourists} Active</div>
+                      <div className="text-white/80">{alerts.length} Alerts</div>
+                    </div>
                   </div>
+                  
+                  {/* Map Legend */}
+                  <div className="absolute bottom-4 left-4 bg-black/70 backdrop-blur-sm rounded-lg p-3 text-xs z-10">
+                    <div className="space-y-1">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                        <span className="text-white">Alert Users</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                        <span className="text-white">Caution Users</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                        <span className="text-white">Safe Users</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <div className="w-3 h-3 bg-gray-400 rounded-full"></div>
+                        <span className="text-white">Offline Users</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <div className="w-2 h-2 bg-green-400 rounded-full animate-ping"></div>
+                        <span className="text-white">Online Status</span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Loading State */}
+                  {!mapInstanceRef.current && (
+                    <div className="absolute inset-0 bg-muted/50 rounded-lg flex items-center justify-center">
+                      <div className="text-center">
+                        <MapPin className="w-8 h-8 text-muted-foreground mb-2 mx-auto animate-spin" />
+                        <p className="text-sm text-muted-foreground">Loading map...</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -467,12 +811,12 @@ export default function AdminDashboard() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-border">
-                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">ID</th>
-                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Name</th>
-                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Location</th>
-                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Safety Score</th>
-                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Status</th>
-                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Actions</th>
+                    <th className="text-left py-3 px-4 font-medium text-black">ID</th>
+                    <th className="text-left py-3 px-4 font-medium text-black">Name</th>
+                    <th className="text-left py-3 px-4 font-medium text-black">Location</th>
+                    <th className="text-left py-3 px-4 font-medium text-black">Safety Score</th>
+                    <th className="text-left py-3 px-4 font-medium text-black">Status</th>
+                    <th className="text-left py-3 px-4 font-medium text-black">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
@@ -563,7 +907,7 @@ export default function AdminDashboard() {
 
             {tourists.length > 0 && (
               <div className="flex items-center justify-between mt-6 pt-4 border-t border-border">
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-black">
                   Showing 1-{Math.min(20, tourists.length)} of {tourists.length} tourists
                 </p>
                 <div className="flex space-x-2">
