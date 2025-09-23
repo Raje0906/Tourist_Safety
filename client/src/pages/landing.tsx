@@ -25,6 +25,7 @@ export default function Landing() {
   const [, setLocation] = useLocation();
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [imagesLoaded, setImagesLoaded] = useState(false);
 
   // Background images array
   const backgroundImages = [
@@ -33,16 +34,41 @@ export default function Landing() {
     '/pexels-thelazyartist-1302991.jpg'
   ];
 
-  // Auto-rotate background images every 5 seconds
+  // Preload images to prevent blank transitions
   useEffect(() => {
+    let loadedCount = 0;
+    const totalImages = backgroundImages.length;
+
+    backgroundImages.forEach((imageSrc) => {
+      const img = new Image();
+      img.onload = () => {
+        loadedCount++;
+        if (loadedCount === totalImages) {
+          setImagesLoaded(true);
+        }
+      };
+      img.onerror = () => {
+        loadedCount++;
+        if (loadedCount === totalImages) {
+          setImagesLoaded(true);
+        }
+      };
+      img.src = imageSrc;
+    });
+  }, []);
+
+  // Auto-rotate background images every 3 seconds - only start after images are loaded
+  useEffect(() => {
+    if (!imagesLoaded) return;
+
     const interval = setInterval(() => {
       setCurrentImageIndex((prevIndex) => 
         (prevIndex + 1) % backgroundImages.length
       );
-    }, 5000);
+    }, 3000); // 3 seconds delay
 
     return () => clearInterval(interval);
-  }, [backgroundImages.length]);
+  }, [backgroundImages.length, imagesLoaded]);
 
   const handleAnimationComplete = () => {
     console.log('All letters have animated!');
@@ -177,17 +203,29 @@ export default function Landing() {
       <section className="relative h-screen flex items-center justify-center overflow-hidden">
         {/* Background Image Slideshow */}
         <div className="absolute inset-0">
-          {backgroundImages.map((image, index) => (
-            <div
-              key={image}
-              className={`absolute inset-0 bg-cover bg-center bg-no-repeat transition-opacity duration-1000 ${
-                index === currentImageIndex ? 'opacity-100' : 'opacity-0'
-              }`}
+          {imagesLoaded ? (
+            backgroundImages.map((image, index) => (
+              <div
+                key={image}
+                className={`absolute inset-0 bg-cover bg-center bg-no-repeat transition-opacity duration-2000 ease-in-out ${
+                  index === currentImageIndex ? 'opacity-100' : 'opacity-0'
+                }`}
+                style={{
+                  backgroundImage: `linear-gradient(rgba(15, 23, 42, 0.7), rgba(15, 23, 42, 0.7)), url('${image}')`,
+                  zIndex: index === currentImageIndex ? 2 : 1
+                }}
+              />
+            ))
+          ) : (
+            // Fallback background while images load
+            <div 
+              className="absolute inset-0 bg-cover bg-center bg-no-repeat"
               style={{
-                backgroundImage: `linear-gradient(rgba(15, 23, 42, 0.7), rgba(15, 23, 42, 0.7)), url('${image}')`
+                backgroundImage: `linear-gradient(rgba(15, 23, 42, 0.8), rgba(15, 23, 42, 0.8)), url('${backgroundImages[0]}')`,
+                zIndex: 1
               }}
             />
-          ))}
+          )}
         </div>
         
         {/* Hero Content */}
