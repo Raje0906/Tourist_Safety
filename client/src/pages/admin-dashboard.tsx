@@ -196,7 +196,7 @@ export default function AdminDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-background relative">
+    <div className="min-h-screen relative" style={{ background: 'linear-gradient(-45deg, #0f172a, #1e293b, #0369a1, #67e8f9)' }}>
       <AnimatedBackground />
 
       {/* Admin Header */}

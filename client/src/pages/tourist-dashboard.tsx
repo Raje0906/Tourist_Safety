@@ -25,7 +25,12 @@ import {
 
 export default function TouristDashboard() {
   const [, setLocation] = useLocation();
-  const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [currentLocation, setCurrentLocation] = useState<{ 
+    lat: number; 
+    lng: number; 
+    accuracy?: number;
+    lastUpdated?: Date;
+  } | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { lastMessage, isConnected } = useWebSocket();
@@ -41,54 +46,131 @@ export default function TouristDashboard() {
     }
   }, [user.id, tourist.id, setLocation]);
 
-  // Get current location
+  // Real-time location tracking
   useEffect(() => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const location = {
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-          };
-          setCurrentLocation(location);
+    let watchId: number | null = null;
+    let locationUpdateInterval: NodeJS.Timeout | null = null;
+
+    const startLocationTracking = () => {
+      if (!navigator.geolocation) {
+        console.warn("Geolocation is not supported by this browser.");
+        // Fallback location if geolocation not supported
+        const fallbackLocation = {
+          lat: 40.7128,
+          lng: -74.0060,
+          accuracy: 1000,
+          lastUpdated: new Date(),
+        };
+        setCurrentLocation(fallbackLocation);
+        return;
+      }
+
+      // Options for high accuracy location tracking
+      const options = {
+        enableHighAccuracy: true, // Request high accuracy
+        timeout: 15000, // 15 second timeout
+        maximumAge: 30000 // 30 seconds cache for performance
+      };
+
+      // Success callback for location updates
+      const onLocationSuccess = (position: GeolocationPosition) => {
+        const newLocation = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+          accuracy: position.coords.accuracy,
+          lastUpdated: new Date(),
+        };
+
+        // Only update if location has changed significantly (>10 meters)
+        if (!currentLocation || 
+            Math.abs(newLocation.lat - currentLocation.lat) > 0.0001 || 
+            Math.abs(newLocation.lng - currentLocation.lng) > 0.0001) {
           
-          // Update tourist location
+          setCurrentLocation(newLocation);
+          
+          // Update tourist location in backend
           updateLocationMutation.mutate({
-            locationLat: location.lat.toString(),
-            locationLng: location.lng.toString(),
+            locationLat: newLocation.lat.toString(),
+            locationLng: newLocation.lng.toString(),
             currentLocation: "Current Location",
+            accuracy: position.coords.accuracy,
+            timestamp: new Date().toISOString(),
           });
-        },
-        (error) => {
-          console.error("Error getting location:", error);
-          // Set mock location for testing/demo purposes
+
+          console.log(`Location updated: ${newLocation.lat.toFixed(6)}, ${newLocation.lng.toFixed(6)} (Accuracy: ${position.coords.accuracy}m)`);
+        }
+      };
+
+      // Error callback for location tracking
+      const onLocationError = (error: GeolocationPositionError) => {
+        console.error("Location tracking error:", error);
+        
+        let errorMessage = "";
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            errorMessage = "Location access denied by user";
+            toast({
+              title: "Location Access Denied",
+              description: "Please enable location services for real-time tracking",
+              variant: "destructive",
+            });
+            break;
+          case error.POSITION_UNAVAILABLE:
+            errorMessage = "Location information is unavailable";
+            break;
+          case error.TIMEOUT:
+            errorMessage = "Location request timed out";
+            break;
+        }
+        
+        // If no current location is set, use fallback
+        if (!currentLocation) {
           const mockLocation = {
             lat: 40.7128,
-            lng: -74.0060
+            lng: -74.0060,
+            accuracy: 1000, // 1km accuracy for demo
+            lastUpdated: new Date(),
           };
           setCurrentLocation(mockLocation);
           
           updateLocationMutation.mutate({
             locationLat: mockLocation.lat.toString(),
             locationLng: mockLocation.lng.toString(),
-            currentLocation: "New York, NY (Demo)",
+            currentLocation: "New York, NY (Demo Location)",
           });
-        },
-        {
-          timeout: 10000, // 10 second timeout
-          enableHighAccuracy: false,
-          maximumAge: 300000 // 5 minutes cache
         }
-      );
-    } else {
-      // Fallback location if geolocation not supported
-      const fallbackLocation = {
-        lat: 40.7128,
-        lng: -74.0060
       };
-      setCurrentLocation(fallbackLocation);
-    }
-  }, []);
+
+      // Start watching location changes
+      watchId = navigator.geolocation.watchPosition(
+        onLocationSuccess,
+        onLocationError,
+        options
+      );
+
+      // Also set up periodic location updates as backup
+      locationUpdateInterval = setInterval(() => {
+        navigator.geolocation.getCurrentPosition(
+          onLocationSuccess,
+          onLocationError,
+          options
+        );
+      }, 60000); // Update every minute
+    };
+
+    // Start location tracking
+    startLocationTracking();
+
+    // Cleanup function
+    return () => {
+      if (watchId !== null) {
+        navigator.geolocation.clearWatch(watchId);
+      }
+      if (locationUpdateInterval) {
+        clearInterval(locationUpdateInterval);
+      }
+    };
+  }, []); // Empty dependency array to run only once
 
   // Fetch tourist alerts
   const { data: alertsData } = useQuery({
@@ -201,18 +283,18 @@ export default function TouristDashboard() {
   };
 
   return (
-    <div className="min-h-screen relative" style={{ background: 'linear-gradient(-45deg, #0D1B2A, #1B263B, #415A77, #778DA9)' }}>
+    <div className="min-h-screen relative" style={{ background: 'linear-gradient(-45deg, #0f172a, #1e293b, #0369a1, #67e8f9)' }}>
 
       {/* Header */}
       <header className="bg-card/80 backdrop-blur-sm border-b border-border p-4 relative z-10">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
-              <SafeVoyageLogo className="text-primary-foreground" size={24} />
+            <div className="bg-white/95 backdrop-blur-sm p-2 rounded-lg shadow-xl border border-white/40 flex items-center justify-center w-14 h-14">
+              <SafeVoyageLogo className="text-primary-foreground" size={36} />
             </div>
             <div>
               <h1 className="text-xl font-bold">Safe Voyage</h1>
-              <p className="text-sm text-muted-foreground" data-testid="text-user-name">
+              <p className="text-sm text-black font-semibold" data-testid="text-user-name">
                 {tourist.firstName} {tourist.lastName}
               </p>
             </div>
@@ -225,10 +307,10 @@ export default function TouristDashboard() {
               </span>
             </div>
             <Button variant="ghost" size="sm" data-testid="button-notifications">
-              <Bell className="w-5 h-5" />
+              <Bell className="w-6 h-6" />
             </Button>
             <Button variant="ghost" size="sm" data-testid="button-profile">
-              <User className="w-5 h-5" />
+              <User className="w-6 h-6" />
             </Button>
             <Button 
               variant="ghost" 
@@ -237,7 +319,7 @@ export default function TouristDashboard() {
               className="text-destructive hover:text-destructive hover:bg-destructive/10"
               data-testid="button-logout"
             >
-              <LogOut className="w-5 h-5" />
+              <LogOut className="w-6 h-6" />
             </Button>
           </div>
         </div>
@@ -279,7 +361,7 @@ export default function TouristDashboard() {
               </div>
               <div className="flex-1">
                 <h3 className="text-lg font-medium text-green-400 mb-2">Good Safety Status</h3>
-                <p className="text-muted-foreground text-sm mb-2">
+                <p className="text-black text-sm mb-2">
                   You're in a safe area. Continue enjoying your trip!
                 </p>
                 <div className="flex space-x-2">
@@ -309,7 +391,7 @@ export default function TouristDashboard() {
                 <AlertTriangle className="text-destructive-foreground w-8 h-8" />
               </Button>
               <h3 className="font-semibold text-destructive mb-2">Emergency</h3>
-              <p className="text-xs text-muted-foreground">Tap for immediate help</p>
+              <p className="text-xs text-black">Tap for immediate help</p>
             </CardContent>
           </Card>
 
@@ -324,7 +406,7 @@ export default function TouristDashboard() {
                 <Share2 className="text-primary-foreground w-8 h-8" />
               </Button>
               <h3 className="font-semibold mb-2">Share Location</h3>
-              <p className="text-xs text-muted-foreground">Share with family</p>
+              <p className="text-xs text-black">Share with family</p>
             </CardContent>
           </Card>
 
@@ -338,7 +420,7 @@ export default function TouristDashboard() {
                 <Headphones className="text-accent-foreground w-8 h-8" />
               </Button>
               <h3 className="font-semibold mb-2">Support</h3>
-              <p className="text-xs text-muted-foreground">24/7 assistance</p>
+              <p className="text-xs text-black">24/7 assistance</p>
             </CardContent>
           </Card>
         </div>
@@ -357,7 +439,9 @@ export default function TouristDashboard() {
                   <LocationMap 
                     lat={currentLocation.lat} 
                     lng={currentLocation.lng}
+                    accuracy={currentLocation.accuracy}
                     className="h-full w-full"
+                    showAccuracyCircle={true}
                   />
                 ) : (
                   <div className="h-full flex items-center justify-center">
@@ -369,11 +453,26 @@ export default function TouristDashboard() {
                 )}
               </div>
               {currentLocation && (
-                <div className="mt-4 text-center">
-                  <p className="text-sm text-green-400 font-medium mb-1">Safe Zone</p>
-                  <p className="text-xs text-muted-foreground" data-testid="text-current-location">
+                <div className="mt-4">
+                  <div className="flex items-center justify-center space-x-4 mb-2">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                      <span className="text-sm text-green-400 font-medium">Live Tracking</span>
+                    </div>
+                    {currentLocation.accuracy && (
+                      <span className="text-xs text-blue-400">
+                        ±{Math.round(currentLocation.accuracy)}m accuracy
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground text-center" data-testid="text-current-location">
                     {currentLocation.lat.toFixed(6)}, {currentLocation.lng.toFixed(6)}
                   </p>
+                  {currentLocation.lastUpdated && (
+                    <p className="text-xs text-muted-foreground text-center mt-1">
+                      Last updated: {currentLocation.lastUpdated.toLocaleTimeString()}
+                    </p>
+                  )}
                 </div>
               )}
             </CardContent>
@@ -401,7 +500,7 @@ export default function TouristDashboard() {
                       }`}></div>
                       <div className="flex-1">
                         <p className="text-sm">{alert.message}</p>
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-xs text-black">
                           {new Date(alert.createdAt).toLocaleString()}
                         </p>
                       </div>
@@ -410,8 +509,8 @@ export default function TouristDashboard() {
                 ) : (
                   <div className="text-center py-8">
                     <Bell className="w-12 h-12 text-muted-foreground mb-2 mx-auto opacity-50" />
-                    <p className="text-muted-foreground">No alerts yet</p>
-                    <p className="text-sm text-muted-foreground mt-1">You'll be notified of any important updates</p>
+                    <p className="text-black">No alerts yet</p>
+                    <p className="text-sm text-black mt-1">You'll be notified of any important updates</p>
                   </div>
                 )}
               </div>
@@ -435,21 +534,21 @@ export default function TouristDashboard() {
                     : "Not Set"
                   }
                 </p>
-                <p className="text-sm text-muted-foreground">Trip Duration</p>
+                <p className="text-sm text-black">Trip Duration</p>
               </div>
               <div className="text-center p-4 bg-muted/30 rounded-lg">
                 <MapPin className="w-8 h-8 text-primary mb-2 mx-auto" />
                 <p className="font-medium" data-testid="text-planned-locations">
                   {tourist.itinerary ? tourist.itinerary.split(',').length : 0} Locations
                 </p>
-                <p className="text-sm text-muted-foreground">Planned Visits</p>
+                <p className="text-sm text-black">Planned Visits</p>
               </div>
               <div className="text-center p-4 bg-muted/30 rounded-lg">
                 <ShieldCheck className="w-8 h-8 text-primary mb-2 mx-auto" />
                 <p className="font-medium text-green-400" data-testid="text-digital-id-status">
                   Verified
                 </p>
-                <p className="text-sm text-muted-foreground">Digital ID</p>
+                <p className="text-sm text-black">Digital ID</p>
               </div>
             </div>
           </CardContent>

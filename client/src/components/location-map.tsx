@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Circle } from 'react-leaflet';
 import { Icon } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -22,18 +22,28 @@ const customIcon = new Icon({
 interface LocationMapProps {
   lat: number;
   lng: number;
+  accuracy?: number; // Location accuracy in meters
   className?: string;
+  showAccuracyCircle?: boolean;
 }
 
-export default function LocationMap({ lat, lng, className = "" }: LocationMapProps) {
+export default function LocationMap({ 
+  lat, 
+  lng, 
+  accuracy, 
+  className = "", 
+  showAccuracyCircle = true 
+}: LocationMapProps) {
   const mapRef = useRef<any>(null);
   const [isHovered, setIsHovered] = useState(false);
+  const [lastUpdateTime, setLastUpdateTime] = useState<Date>(new Date());
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // Update map center when coordinates change
     if (mapRef.current) {
       mapRef.current.setView([lat, lng], 15);
+      setLastUpdateTime(new Date());
     }
   }, [lat, lng]);
 
@@ -91,15 +101,40 @@ export default function LocationMap({ lat, lng, className = "" }: LocationMapPro
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
+        
+        {/* Accuracy circle */}
+        {showAccuracyCircle && accuracy && accuracy > 0 && (
+          <Circle
+            center={[lat, lng]}
+            radius={accuracy}
+            color="#3b82f6"
+            fillColor="#3b82f6"
+            fillOpacity={0.1}
+            weight={2}
+          />
+        )}
+        
         <Marker position={[lat, lng]} icon={customIcon}>
           <Popup>
             <div className="text-center">
               <strong>Your Current Location</strong>
               <br />
-              <span className="text-sm text-green-600">Safe Zone</span>
+              <span className="text-sm text-green-600">Live Tracking Active</span>
               <br />
               <span className="text-xs text-gray-500">
                 {lat.toFixed(6)}, {lng.toFixed(6)}
+              </span>
+              {accuracy && (
+                <>
+                  <br />
+                  <span className="text-xs text-blue-500">
+                    Accuracy: ±{Math.round(accuracy)}m
+                  </span>
+                </>
+              )}
+              <br />
+              <span className="text-xs text-gray-400">
+                Updated: {lastUpdateTime.toLocaleTimeString()}
               </span>
             </div>
           </Popup>

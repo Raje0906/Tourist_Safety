@@ -1,4 +1,5 @@
 import { useState } from "react";
+
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -141,7 +142,7 @@ export default function Login() {
 
   return (
     <div className="min-h-screen relative" style={{
-      backgroundImage: 'url("https://images.unsplash.com/photo-1564507592333-c60657eea523?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2071&q=80")',
+      backgroundImage: 'linear-gradient(rgba(15, 23, 42, 0.6), rgba(15, 23, 42, 0.6)), url("/pexels-jimmy-teoh-294331-1010640.jpg")',
       backgroundSize: 'cover',
       backgroundPosition: 'center',
       backgroundRepeat: 'no-repeat'
@@ -151,7 +152,9 @@ export default function Login() {
         <div className="w-full max-w-md">
           {/* Logo and Header */}
           <div className="text-center mb-8">
-            <SafeVoyageLogo className="mx-auto mb-2" size={32} showText={true} />
+            <SafeVoyageLogo className="mx-auto mb-4" size={64} showText={false} />
+            <h1 className="text-4xl font-bold text-black drop-shadow-2xl mb-2 stroke-text">Welcome to SafeVoyage</h1>
+            <p className="text-black text-xl font-semibold drop-shadow-xl">Your trusted travel safety companion</p>
           </div>
 
           {/* Login Mode Selector */}
@@ -354,7 +357,7 @@ export default function Login() {
                 </form>
               )}
 
-              <p className="text-xs text-center mt-6" style={{ color: 'black' }}>
+              <p className="text-xs text-center mt-6 text-white font-medium drop-shadow-lg">
                 By continuing, you agree to our Terms of Service and Privacy Policy
               </p>
             </CardContent>
@@ -362,24 +365,24 @@ export default function Login() {
 
           {/* Demo credentials hint - only show for admin mode */}
           {loginMode === 'admin' && (
-            <div className="mt-4 p-4 bg-muted/20 rounded-lg border border-border">
-              <p className="text-sm text-center" style={{ color: 'black' }}>
-                <strong>Demo Admin Credentials:</strong><br />
-                Username: admin1, Password: admin123<br />
-                Username: admin2, Password: admin456
+            <div className="mt-4 p-4 bg-white/10 backdrop-blur-md border border-white/20 rounded-lg shadow-2xl" style={{ background: 'rgba(255, 255, 255, 0.1)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}>
+              <p className="text-sm text-center text-white font-semibold drop-shadow-lg">
+                <strong className="text-orange-300">Demo Admin Credentials:</strong><br />
+                <span className="text-white/90">Username: admin1, Password: admin123</span><br />
+                <span className="text-white/90">Username: admin2, Password: admin456</span>
               </p>
             </div>
           )}
           
           {/* Tourist info hint - only show for tourist mode */}
           {loginMode === 'tourist' && (
-            <div className="mt-4 p-4 bg-muted/20 rounded-lg border border-border">
-              <p className="text-sm text-center" style={{ color: 'black' }}>
-                <strong>Demo Tourist Credentials:</strong><br />
-                Email: tourist1@example.com, Password: tourist123<br />
-                Email: tourist2@example.com, Password: tourist456<br />
-                Email: tourist3@example.com, Password: tourist789<br />
-                <span className="block mt-2 text-xs">Or use Google OAuth for quick access</span>
+            <div className="mt-4 p-4 bg-white/10 backdrop-blur-md border border-white/20 rounded-lg shadow-2xl" style={{ background: 'rgba(255, 255, 255, 0.1)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}>
+              <p className="text-sm text-center text-white font-semibold drop-shadow-lg">
+                <strong className="text-orange-300">Demo Tourist Credentials:</strong><br />
+                <span className="text-white/90">Email: tourist1@example.com, Password: tourist123</span><br />
+                <span className="text-white/90">Email: tourist2@example.com, Password: tourist456</span><br />
+                <span className="text-white/90">Email: tourist3@example.com, Password: tourist789</span><br />
+                <span className="block mt-2 text-xs text-blue-200">Or use Google OAuth for quick access</span>
               </p>
             </div>
           )}
