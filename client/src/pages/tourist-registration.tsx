@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import AnimatedBackground from "@/components/animated-background";
 import FileUpload from "@/components/file-upload";
+import SafeVoyageLogo from "@/components/safe-voyage-logo";
 import { Shield, User, IdCard, Route, Phone } from "lucide-react";
 
 const registrationSchema = z.object({
@@ -135,7 +136,7 @@ export default function TouristRegistration() {
           {/* Header */}
           <div className="text-center mb-8">
             <div className="w-20 h-20 mx-auto mb-4 bg-primary rounded-xl flex items-center justify-center">
-              <Shield className="w-10 h-10 text-primary-foreground" />
+              <SafeVoyageLogo className="text-primary-foreground" size={40} />
             </div>
             <h1 className="text-3xl font-bold text-foreground mb-2">
               Create Your Digital Tourist ID
@@ -366,7 +367,7 @@ export default function TouristRegistration() {
                     className="w-full bg-primary text-primary-foreground py-4 px-6 rounded-lg font-semibold hover:bg-primary/90 transition-all duration-200 flex items-center justify-center"
                     data-testid="button-create-id"
                   >
-                    <Shield className="mr-2 w-5 h-5" />
+                    <SafeVoyageLogo className="mr-2" size={20} />
                     {isLoading ? "Creating Digital Tourist ID..." : "Create Digital Tourist ID"}
                   </Button>
                 </form>

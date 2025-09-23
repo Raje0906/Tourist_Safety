@@ -5,8 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import DotGrid from "@/components/DotGrid";
-import { Shield, LogIn, Users, UserCheck, UserPlus } from "lucide-react";
+
+import { LogIn, Users, UserCheck, UserPlus } from "lucide-react";
+import SafeVoyageLogo from "@/components/safe-voyage-logo";
 import { FaGoogle } from "react-icons/fa";
 
 type LoginMode = 'tourist' | 'admin';
@@ -139,54 +140,42 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen relative">
-      <div style={{ width: '100%', height: '100vh', position: 'fixed', top: 0, left: 0, zIndex: 0 }}>
-        <DotGrid
-          dotSize={10}
-          gap={15}
-          baseColor="#5227FF"
-          activeColor="#5227FF"
-          proximity={120}
-          shockRadius={250}
-          shockStrength={5}
-          resistance={750}
-          returnDuration={1.5}
-        />
-      </div>
+    <div className="min-h-screen relative" style={{
+      backgroundImage: 'url("https://images.unsplash.com/photo-1564507592333-c60657eea523?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2071&q=80")',
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+      backgroundRepeat: 'no-repeat'
+    }}>
       
       <div className="min-h-screen flex items-center justify-center p-4 relative z-10">
         <div className="w-full max-w-md">
           {/* Logo and Header */}
           <div className="text-center mb-8">
-            <div className="w-16 h-16 mx-auto mb-4 bg-primary rounded-xl flex items-center justify-center">
-              <Shield className="w-8 h-8 text-primary-foreground" />
-            </div>
-            <h1 className="text-3xl font-bold text-foreground mb-2">
-              Tourist Safety Monitor
-            </h1>
-            <p className="text-muted-foreground">Secure • Reliable • Always Protected</p>
+            <SafeVoyageLogo className="mx-auto mb-2" size={32} showText={true} />
           </div>
 
           {/* Login Mode Selector */}
           <div className="flex mb-6 bg-card/40 backdrop-blur-sm rounded-xl p-2 border border-border">
             <button
-              onMouseEnter={() => setLoginMode('tourist')}
+              onClick={() => setLoginMode('tourist')}
               className={`flex-1 flex items-center justify-center py-3 px-4 rounded-lg transition-all duration-300 ${
                 loginMode === 'tourist' 
-                  ? 'bg-primary text-primary-foreground shadow-lg transform scale-105' 
+                  ? 'text-primary-foreground shadow-lg transform scale-105' 
                   : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
               }`}
+              style={{ backgroundColor: loginMode === 'tourist' ? '#2563eb' : 'rgba(37, 99, 235, 0.3)', color: 'white' }}
             >
               <Users className="w-5 h-5 mr-2" />
               Tourist Login
             </button>
             <button
-              onMouseEnter={() => setLoginMode('admin')}
+              onClick={() => setLoginMode('admin')}
               className={`flex-1 flex items-center justify-center py-3 px-4 rounded-lg transition-all duration-300 ${
                 loginMode === 'admin' 
-                  ? 'bg-primary text-primary-foreground shadow-lg transform scale-105' 
+                  ? 'text-primary-foreground shadow-lg transform scale-105' 
                   : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
               }`}
+              style={{ backgroundColor: loginMode === 'admin' ? '#2563eb' : 'rgba(37, 99, 235, 0.3)', color: 'white' }}
             >
               <UserCheck className="w-5 h-5 mr-2" />
               Admin Access
@@ -194,7 +183,7 @@ export default function Login() {
           </div>
 
           {/* Login Form */}
-          <Card className="bg-card/80 backdrop-blur-sm border border-border shadow-xl">
+          <Card className="bg-card/20 backdrop-blur-md border border-white/20 shadow-2xl" style={{ background: 'rgba(255, 255, 255, 0.1)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', borderRadius: '16px', boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.37)' }}>
             <CardContent className="pt-6">
               <h2 className="text-xl font-semibold text-center mb-6">
                 {loginMode === 'tourist' ? 'Welcome Tourist' : 'Admin Portal'}
@@ -209,9 +198,13 @@ export default function Login() {
                       onClick={() => setTouristMode('signin')}
                       className={`flex-1 flex items-center justify-center py-2 px-3 rounded-md transition-all duration-200 text-sm ${
                         touristMode === 'signin' 
-                          ? 'bg-primary text-primary-foreground shadow-sm' 
-                          : 'text-muted-foreground hover:text-foreground'
+                          ? 'text-primary-foreground shadow-sm' 
+                          : 'hover:text-foreground'
                       }`}
+                      style={{ 
+                        backgroundColor: touristMode === 'signin' ? '#2563eb' : 'rgba(37, 99, 235, 0.3)',
+                        color: 'white'
+                      }}
                     >
                       <LogIn className="w-4 h-4 mr-2" />
                       Sign In
@@ -220,9 +213,13 @@ export default function Login() {
                       onClick={() => setTouristMode('register')}
                       className={`flex-1 flex items-center justify-center py-2 px-3 rounded-md transition-all duration-200 text-sm ${
                         touristMode === 'register' 
-                          ? 'bg-primary text-primary-foreground shadow-sm' 
-                          : 'text-muted-foreground hover:text-foreground'
+                          ? 'text-primary-foreground shadow-sm' 
+                          : 'hover:text-foreground'
                       }`}
+                      style={{ 
+                        backgroundColor: touristMode === 'register' ? '#2563eb' : 'rgba(37, 99, 235, 0.3)',
+                        color: 'white'
+                      }}
                     >
                       <UserPlus className="w-4 h-4 mr-2" />
                       Register
@@ -253,7 +250,8 @@ export default function Login() {
                       <Button
                         type="submit"
                         disabled={isLoading || !touristCredentials.email || !touristCredentials.password}
-                        className="w-full bg-primary text-primary-foreground py-3 px-4 rounded-lg font-medium hover:bg-primary/90 transition-all duration-200"
+                        className="w-full py-3 px-4 rounded-lg font-medium hover:opacity-90 transition-all duration-200"
+                        style={{ backgroundColor: '#2563eb', color: 'white' }}
                       >
                         <LogIn className="mr-2 w-4 h-4" />
                         Sign In
@@ -292,7 +290,8 @@ export default function Login() {
                       <Button
                         type="submit"
                         disabled={isLoading || !touristCredentials.email || !touristCredentials.password || !touristCredentials.name}
-                        className="w-full bg-primary text-primary-foreground py-3 px-4 rounded-lg font-medium hover:bg-primary/90 transition-all duration-200"
+                        className="w-full py-3 px-4 rounded-lg font-medium hover:opacity-90 transition-all duration-200"
+                        style={{ backgroundColor: '#2563eb', color: 'white' }}
                       >
                         <UserPlus className="mr-2 w-4 h-4" />
                         Create Account
@@ -320,7 +319,7 @@ export default function Login() {
               ) : (
                 /* Admin Login */
                 <form onSubmit={handleAdminLogin} className="space-y-4">
-                  <p className="text-center text-muted-foreground mb-4">
+                  <p className="text-center mb-4" style={{ color: 'black' }}>
                     Secure admin access for system management
                   </p>
                   
@@ -345,7 +344,8 @@ export default function Login() {
                   <Button
                     type="submit"
                     disabled={isLoading || !adminCredentials.username || !adminCredentials.password}
-                    className="w-full bg-primary text-primary-foreground py-3 px-4 rounded-lg font-medium hover:bg-primary/90 transition-all duration-200"
+                    className="w-full py-3 px-4 rounded-lg font-medium hover:opacity-90 transition-all duration-200"
+                    style={{ backgroundColor: '#2563eb', color: 'white' }}
                     data-testid="button-admin-login"
                   >
                     <LogIn className="mr-2 w-4 h-4" />
@@ -354,7 +354,7 @@ export default function Login() {
                 </form>
               )}
 
-              <p className="text-xs text-muted-foreground text-center mt-6">
+              <p className="text-xs text-center mt-6" style={{ color: 'black' }}>
                 By continuing, you agree to our Terms of Service and Privacy Policy
               </p>
             </CardContent>
@@ -363,7 +363,7 @@ export default function Login() {
           {/* Demo credentials hint - only show for admin mode */}
           {loginMode === 'admin' && (
             <div className="mt-4 p-4 bg-muted/20 rounded-lg border border-border">
-              <p className="text-sm text-muted-foreground text-center">
+              <p className="text-sm text-center" style={{ color: 'black' }}>
                 <strong>Demo Admin Credentials:</strong><br />
                 Username: admin1, Password: admin123<br />
                 Username: admin2, Password: admin456
@@ -374,7 +374,7 @@ export default function Login() {
           {/* Tourist info hint - only show for tourist mode */}
           {loginMode === 'tourist' && (
             <div className="mt-4 p-4 bg-muted/20 rounded-lg border border-border">
-              <p className="text-sm text-muted-foreground text-center">
+              <p className="text-sm text-center" style={{ color: 'black' }}>
                 <strong>Demo Tourist Credentials:</strong><br />
                 Email: tourist1@example.com, Password: tourist123<br />
                 Email: tourist2@example.com, Password: tourist456<br />

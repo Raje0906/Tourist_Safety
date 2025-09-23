@@ -6,7 +6,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useWebSocket } from "@/lib/websocket";
-import AnimatedBackground from "@/components/animated-background";
+import SafeVoyageLogo from "@/components/safe-voyage-logo";
+import LocationMap from "@/components/location-map";
 import { 
   Shield, 
   Bell, 
@@ -200,18 +201,17 @@ export default function TouristDashboard() {
   };
 
   return (
-    <div className="min-h-screen relative">
-      <AnimatedBackground />
+    <div className="min-h-screen relative" style={{ background: 'linear-gradient(-45deg, #0D1B2A, #1B263B, #415A77, #778DA9)' }}>
 
       {/* Header */}
       <header className="bg-card/80 backdrop-blur-sm border-b border-border p-4 relative z-10">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
-              <Shield className="text-primary-foreground w-6 h-6" />
+              <SafeVoyageLogo className="text-primary-foreground" size={24} />
             </div>
             <div>
-              <h1 className="text-xl font-bold">Tourist Safety</h1>
+              <h1 className="text-xl font-bold">Safe Voyage</h1>
               <p className="text-sm text-muted-foreground" data-testid="text-user-name">
                 {tourist.firstName} {tourist.lastName}
               </p>
@@ -352,15 +352,30 @@ export default function TouristDashboard() {
                 <Navigation className="mr-2 text-primary" />
                 Current Location
               </h3>
-              <div className="bg-muted/50 rounded-lg h-48 flex items-center justify-center border border-border">
-                <div className="text-center">
-                  <MapPin className="w-12 h-12 text-muted-foreground mb-2 mx-auto" />
-                  <p className="text-muted-foreground" data-testid="text-current-location">
-                    {currentLocation ? `${currentLocation.lat.toFixed(6)}, ${currentLocation.lng.toFixed(6)}` : "Getting location..."}
-                  </p>
-                  <p className="text-sm text-green-400 mt-1">Safe Zone</p>
-                </div>
+              <div className="bg-muted/50 rounded-lg h-48 border border-border overflow-hidden">
+                {currentLocation ? (
+                  <LocationMap 
+                    lat={currentLocation.lat} 
+                    lng={currentLocation.lng}
+                    className="h-full w-full"
+                  />
+                ) : (
+                  <div className="h-full flex items-center justify-center">
+                    <div className="text-center">
+                      <MapPin className="w-12 h-12 text-muted-foreground mb-2 mx-auto animate-pulse" />
+                      <p className="text-muted-foreground">Getting location...</p>
+                    </div>
+                  </div>
+                )}
               </div>
+              {currentLocation && (
+                <div className="mt-4 text-center">
+                  <p className="text-sm text-green-400 font-medium mb-1">Safe Zone</p>
+                  <p className="text-xs text-muted-foreground" data-testid="text-current-location">
+                    {currentLocation.lat.toFixed(6)}, {currentLocation.lng.toFixed(6)}
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
 

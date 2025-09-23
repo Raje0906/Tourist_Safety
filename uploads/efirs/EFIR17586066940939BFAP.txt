@@ -1,0 +1,38 @@
+ELECTRONIC FIRST INFORMATION REPORT (E-FIR)
+===========================================
+
+FIR Number: EFIR17586066940939BFAP
+Date Filed: 23/9/2025
+Status: filed
+
+INCIDENT DETAILS
+================
+Type: harassment
+Location: dada
+Coordinates: 18.534843, 73.880783
+
+DESCRIPTION
+===========
+dwadawd
+
+COMPLAINANT DETAILS
+==================
+Tourist ID: 68d2349c3c85ddd76f82de97
+Filed By: 68d2349c3c85ddd76f82de97
+
+AUTHORITY CONTACTED
+==================
+Authority ID: 68d233093c85ddd76f82de85
+
+EVIDENCE FILES
+==============
+https://storage.example.com/evidence/1758606668876_367667_77145602.pdf
+
+SYSTEM INFORMATION
+==================
+Generated automatically by Tourist Safety System
+Timestamp: 2025-09-23T05:51:34.266Z
+
+---
+This is an electronically generated document.
+For queries, contact: support@touristsafety.gov

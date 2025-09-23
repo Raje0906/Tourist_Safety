@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { useWebSocket } from "@/lib/websocket";
 import AnimatedBackground from "@/components/animated-background";
 import EFIRForm from "@/components/efir-form";
+import SafeVoyageLogo from "@/components/safe-voyage-logo";
 import { 
   Shield, 
   Users, 
@@ -203,11 +204,11 @@ export default function AdminDashboard() {
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
-              <Shield className="text-primary-foreground w-6 h-6" />
+              <SafeVoyageLogo className="text-primary-foreground" size={24} />
             </div>
             <div>
               <h1 className="text-xl font-bold">Admin Dashboard</h1>
-              <p className="text-sm text-muted-foreground">Tourist Safety Monitoring System</p>
+              <p className="text-sm text-muted-foreground">Safe Voyage System</p>
             </div>
           </div>
           <div className="flex items-center space-x-4">

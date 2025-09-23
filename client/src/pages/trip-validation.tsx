@@ -9,8 +9,8 @@ import { apiRequest } from "@/lib/queryClient";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { CheckCircle, AlertTriangle, Calendar, Shield } from "lucide-react";
-import Squares from "@/components/Squares";
+import { CheckCircle, AlertTriangle, Calendar } from "lucide-react";
+import SafeVoyageLogo from "@/components/safe-voyage-logo";
 
 const tripValidationSchema = z.object({
   startDate: z.string().min(1, "Start date is required"),
@@ -131,28 +131,18 @@ export default function TripValidation() {
   };
 
   return (
-    <div className="min-h-screen relative">
-      <div style={{ width: '100%', height: '100vh', position: 'fixed', top: 0, left: 0, zIndex: 0 }}>
-        <Squares 
-          speed={0.5} 
-          squareSize={40}
-          direction='diagonal'
-          borderColor='#333'
-          hoverFillColor='#555'
-        />
-      </div>
-      
+    <div className="min-h-screen relative bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
       <div className="min-h-screen flex items-center justify-center p-4 relative z-10">
         <div className="w-full max-w-md">
           {/* Header */}
           <div className="text-center mb-8">
             <div className="w-20 h-20 mx-auto mb-4 bg-primary rounded-xl flex items-center justify-center">
-              <Shield className="w-10 h-10 text-primary-foreground" />
+              <SafeVoyageLogo className="text-primary-foreground" size={40} />
             </div>
-            <h1 className="text-3xl font-bold text-foreground mb-2">
+            <h1 className="text-3xl font-bold text-slate-800 dark:text-slate-100 mb-2">
               Check Digital Tourist ID
             </h1>
-            <p className="text-muted-foreground">
+            <p className="text-slate-600 dark:text-slate-300">
               Enter your trip dates to check if you have a valid digital ID
             </p>
           </div>
@@ -160,8 +150,8 @@ export default function TripValidation() {
           {/* Trip Validation Form */}
           <Card className="bg-card/90 backdrop-blur-sm border border-border shadow-xl">
             <CardHeader>
-              <CardTitle className="flex items-center">
-                <Calendar className="mr-2 text-primary" />
+              <CardTitle className="flex items-center text-slate-800 dark:text-slate-100">
+                <Calendar className="mr-2 text-slate-700 dark:text-slate-300" />
                 Trip Validation
               </CardTitle>
             </CardHeader>
@@ -173,10 +163,15 @@ export default function TripValidation() {
                     name="startDate"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Start Date</FormLabel>
+                        <FormLabel className="text-slate-700 dark:text-slate-300">Start Date</FormLabel>
                         <FormControl>
                           <Input
                             type="date"
+                            className="text-foreground [&::-webkit-calendar-picker-indicator]:opacity-100 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:filter-none"
+                            style={{
+                              colorScheme: 'dark',
+                              filter: 'invert(1)'
+                            }}
                             {...field}
                           />
                         </FormControl>
@@ -190,10 +185,15 @@ export default function TripValidation() {
                     name="endDate"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>End Date</FormLabel>
+                        <FormLabel className="text-slate-700 dark:text-slate-300">End Date</FormLabel>
                         <FormControl>
                           <Input
                             type="date"
+                            className="text-foreground [&::-webkit-calendar-picker-indicator]:opacity-100 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:filter-none"
+                            style={{
+                              colorScheme: 'dark',
+                              filter: 'invert(1)'
+                            }}
                             {...field}
                           />
                         </FormControl>
@@ -222,10 +222,10 @@ export default function TripValidation() {
                       <AlertTriangle className="w-6 h-6 text-yellow-500 mt-0.5" />
                     )}
                     <div className="flex-1">
-                      <p className="text-sm font-medium mb-2">
+                      <p className="text-sm font-medium mb-2 text-slate-800 dark:text-slate-100">
                         {validationResult.isValid ? "Valid Digital ID Found" : "Action Required"}
                       </p>
-                      <p className="text-sm text-muted-foreground mb-4">
+                      <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
                         {validationResult.message}
                       </p>
                       

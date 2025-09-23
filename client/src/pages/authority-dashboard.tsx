@@ -121,7 +121,7 @@ export default function AuthorityDashboard() {
             <CardHeader>
               <CardTitle>System Status</CardTitle>
               <CardDescription>
-                Current status of the Tourist Safety Monitoring System
+                Current status of the Safe Voyage System
               </CardDescription>
             </CardHeader>
             <CardContent>
