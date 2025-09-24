@@ -471,11 +471,11 @@ export default function AdminDashboard() {
   };
 
   return (
-    <div className="min-h-screen relative" style={{ background: '#2a5e96' }}>
+    <div className="min-h-screen relative" style={{ background: '#E0F2F7' }}>
       <AnimatedBackground />
 
       {/* Admin Header */}
-      <header className="bg-white/10 backdrop-blur-md border-b border-white/20 p-4 relative z-10 shadow-lg" style={{ background: 'rgba(255, 255, 255, 0.1)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}>
+      <header className="bg-white/10 backdrop-blur-md border-b border-white/20 p-4 relative z-10 shadow-lg" style={{ backgroundColor: '#2a5d87', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}>
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
@@ -519,7 +519,7 @@ export default function AdminDashboard() {
       <div className="max-w-7xl mx-auto p-6 space-y-6 relative z-10">
         {/* Stats Overview */}
         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          <Card className="bg-card/80 backdrop-blur-sm border border-border shadow-xl">
+          <Card className="backdrop-blur-sm border border-border shadow-xl" style={{ backgroundColor: '#2a5d87' }}>
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -539,7 +539,7 @@ export default function AdminDashboard() {
             </CardContent>
           </Card>
 
-          <Card className="bg-card/80 backdrop-blur-sm border border-border shadow-xl">
+          <Card className="backdrop-blur-sm border border-border shadow-xl" style={{ backgroundColor: '#2a5d87' }}>
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -559,7 +559,7 @@ export default function AdminDashboard() {
             </CardContent>
           </Card>
 
-          <Card className="bg-card/80 backdrop-blur-sm border border-border shadow-xl">
+          <Card className="backdrop-blur-sm border border-border shadow-xl" style={{ backgroundColor: '#2a5d87' }}>
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -579,7 +579,7 @@ export default function AdminDashboard() {
             </CardContent>
           </Card>
 
-          <Card className="bg-card/80 backdrop-blur-sm border border-border shadow-xl">
+          <Card className="backdrop-blur-sm border border-border shadow-xl" style={{ backgroundColor: '#2a5d87' }}>
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -599,7 +599,7 @@ export default function AdminDashboard() {
             </CardContent>
           </Card>
 
-          <Card className="bg-card/80 backdrop-blur-sm border border-border shadow-xl">
+          <Card className="backdrop-blur-sm border border-border shadow-xl" style={{ backgroundColor: '#2a5d87' }}>
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -619,7 +619,7 @@ export default function AdminDashboard() {
             </CardContent>
           </Card>
 
-          <Card className="bg-card/80 backdrop-blur-sm border border-border shadow-xl">
+          <Card className="backdrop-blur-sm border border-border shadow-xl" style={{ backgroundColor: '#2a5d87' }}>
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -644,7 +644,7 @@ export default function AdminDashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Heat Map */}
           <div className="lg:col-span-2">
-            <Card className="bg-card/80 backdrop-blur-sm border border-border shadow-xl">
+            <Card className="backdrop-blur-sm border border-border shadow-xl" style={{ backgroundColor: '#2a5d87' }}>
               <CardContent className="p-6">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-semibold flex items-center">
@@ -740,7 +740,7 @@ export default function AdminDashboard() {
           </div>
 
           {/* Recent Alerts */}
-          <Card className="bg-card/80 backdrop-blur-sm border border-border shadow-xl">
+          <Card className="backdrop-blur-sm border border-border shadow-xl" style={{ backgroundColor: '#2a5d87' }}>
             <CardContent className="p-6">
               <h3 className="text-lg font-semibold mb-4 flex items-center">
                 <Bell className="mr-2 text-primary" />
@@ -781,7 +781,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Tourist Management Table */}
-        <Card className="bg-card/80 backdrop-blur-sm border border-border shadow-xl">
+        <Card className="backdrop-blur-sm border border-border shadow-xl" style={{ backgroundColor: '#2a5d87' }}>
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-lg font-semibold flex items-center">

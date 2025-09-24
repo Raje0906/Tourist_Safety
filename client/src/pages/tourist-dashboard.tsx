@@ -283,10 +283,10 @@ export default function TouristDashboard() {
   };
 
   return (
-    <div className="min-h-screen relative" style={{ background: '#2a5e96' }}>
+    <div className="min-h-screen relative" style={{ background: '#E0F2F7' }}>
 
       {/* Header */}
-      <header className="bg-white/10 backdrop-blur-md border-b border-white/20 p-4 relative z-10 shadow-lg" style={{ background: 'rgba(255, 255, 255, 0.1)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}>
+      <header className="bg-white/10 backdrop-blur-md border-b border-white/20 p-4 relative z-10 shadow-lg" style={{ backgroundColor: '#2a5d87', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}>
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <div className="bg-white/95 backdrop-blur-sm p-2 rounded-lg shadow-xl border border-white/40 flex items-center justify-center w-14 h-14">
@@ -327,7 +327,7 @@ export default function TouristDashboard() {
 
       <div className="max-w-6xl mx-auto p-4 space-y-6 relative z-10">
         {/* Safety Score Card */}
-        <Card className="bg-card/80 backdrop-blur-sm border border-border shadow-xl">
+        <Card className="backdrop-blur-sm border border-border shadow-xl" style={{ backgroundColor: '#2a5d87' }}>
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-semibold">Safety Score</h2>
@@ -380,7 +380,7 @@ export default function TouristDashboard() {
         {/* Emergency Panel */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Panic Button */}
-          <Card className="bg-card/80 backdrop-blur-sm border border-border shadow-xl">
+          <Card className="backdrop-blur-sm border border-border shadow-xl" style={{ backgroundColor: '#2a5d87' }}>
             <CardContent className="p-6 text-center">
               <Button
                 onClick={handlePanicButton}
@@ -396,7 +396,7 @@ export default function TouristDashboard() {
           </Card>
 
           {/* Location Share */}
-          <Card className="bg-card/80 backdrop-blur-sm border border-border shadow-xl">
+          <Card className="backdrop-blur-sm border border-border shadow-xl" style={{ backgroundColor: '#2a5d87' }}>
             <CardContent className="p-6 text-center">
               <Button
                 onClick={handleLocationShare}
@@ -411,7 +411,7 @@ export default function TouristDashboard() {
           </Card>
 
           {/* Support */}
-          <Card className="bg-card/80 backdrop-blur-sm border border-border shadow-xl">
+          <Card className="backdrop-blur-sm border border-border shadow-xl" style={{ backgroundColor: '#2a5d87' }}>
             <CardContent className="p-6 text-center">
               <Button
                 className="w-20 h-20 bg-accent hover:bg-accent/90 rounded-full flex items-center justify-center mx-auto mb-4 transition-all duration-200"
@@ -428,7 +428,7 @@ export default function TouristDashboard() {
         {/* Current Location & Alerts */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Location Card */}
-          <Card className="bg-card/80 backdrop-blur-sm border border-border shadow-xl">
+          <Card className="backdrop-blur-sm border border-border shadow-xl" style={{ backgroundColor: '#2a5d87' }}>
             <CardContent className="p-6">
               <h3 className="text-lg font-semibold mb-4 flex items-center">
                 <Navigation className="mr-2 text-primary" />
@@ -479,7 +479,7 @@ export default function TouristDashboard() {
           </Card>
 
           {/* Recent Alerts */}
-          <Card className="bg-card/80 backdrop-blur-sm border border-border shadow-xl">
+          <Card className="backdrop-blur-sm border border-border shadow-xl" style={{ backgroundColor: '#2a5d87' }}>
             <CardContent className="p-6">
               <h3 className="text-lg font-semibold mb-4 flex items-center">
                 <Bell className="mr-2 text-primary" />
@@ -519,7 +519,7 @@ export default function TouristDashboard() {
         </div>
 
         {/* Trip Information */}
-        <Card className="bg-card/80 backdrop-blur-sm border border-border shadow-xl">
+        <Card className="backdrop-blur-sm border border-border shadow-xl" style={{ backgroundColor: '#2a5d87' }}>
           <CardContent className="p-6">
             <h3 className="text-lg font-semibold mb-4 flex items-center">
               <Map className="mr-2 text-primary" />
